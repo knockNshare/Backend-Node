@@ -1,5 +1,5 @@
 {
-  "name": "@fr.parisnanterredevops-ch3/backend-node",
+  "name": "@fr.parisnanterre.devops-ch3/backend-node",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
