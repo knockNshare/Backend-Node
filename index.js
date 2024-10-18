@@ -21,10 +21,10 @@ app.get('/', (req, res) => {
 
 app.get('/api/hello', (req, res) => {
     // Example data retrieval logic (e.g., from a database)
-    const exampleData = { message: 'Hello, world!' };
+    const exampleData = { message: 'Helloo beautiful people!' };
     res.json(exampleData);
 });
-
+module.exports = app;
 // Start the server
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
