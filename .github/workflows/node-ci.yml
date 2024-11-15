@@ -34,17 +34,12 @@ jobs:
     # Step 4: Run tests
     - name: Run tests
       run: npm test
-
-   # Run tests with coverage
-      - name: Run tests with coverage
-        run: npm test
-
-      # Upload test coverage to Codecov (or SonarQube, based on your setup)
-      - name: Upload coverage to Codecov
-        if: success()  # Only upload if tests pass
-        uses: codecov/codecov-action@v4
-        with:
-          token: ${{ secrets.secrets.4eea525f-e7ed-4887-b6a9-1de99f02cc85  }}  # Make sure your token is saved as a secret
-          files: ./coverage/lcov-report/lcov-report.html  # Update if needed
-          fail_ci_if_error: true
-          verbose: true
+# Upload test coverage to Codecov (or SonarQube, based on your setup)
+   - name: Upload coverage to Codecov
+      if: success()  # Only upload if tests pass
+      uses: codecov/codecov-action@v4
+      with:
+         token: ${{ secrets.secrets.4eea525f-e7ed-4887-b6a9-1de99f02cc85  }}  # Make sure your token is saved as a secret
+         files: ./coverage/lcov-report/lcov-report.html  # Update if needed
+         fail_ci_if_error: true
+         verbose: true
