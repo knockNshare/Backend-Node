@@ -1,2 +1,1 @@
-https://github.com/DevOps-CH3/Backend/actions/workflows/gradle_build.yml/badge.svg?branch=main)](https://github.com/DevOps-CH3/Backend/actions/workflows/gradle_build.yml/)
-Read me
+[![Node.js CI](https://github.com/DevOps-CH3/NodeBackend/actions/workflows/node-ci.yml/badge.svg?branch=main)](https://github.com/DevOps-CH3/NodeBackend/actions/workflows/node-ci.yml/)
