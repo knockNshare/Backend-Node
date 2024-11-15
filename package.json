@@ -6,6 +6,10 @@
     "start": "node index.js",
     "test": "jest --coverage"
   },
+  "jest": {
+    "collectCoverage": true,
+    "coverageReporters": ["html", "lcov", "text-summary"]
+  },
   "author": "",
   "license": "ISC",
   "description": "",
