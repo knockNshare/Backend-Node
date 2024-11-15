@@ -1,0 +1,46 @@
+name: Node.js CI Windows build and test
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+
+    # Run the workflow on the latest Windows environment
+    runs-on: windows-latest
+
+    steps:
+    # Step 1: Check out the code
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Step 2: Set up Node.js
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+        cache: 'npm'  # Enables caching of npm dependencies
+
+    # Step 3: Install dependencies
+    - name: Install dependencies
+      run: npm install
+
+    # Step 4: Run tests
+    - name: Run tests
+      run: npm test
+
+    # Optional: Step 5 - Upload test coverage reports (if using a coverage tool)
+    # Uncomment and customize if you're using a tool like Codecov
+    # - name: Upload coverage to Codecov
+    #   uses: codecov/codecov-action@v4
+    #   with:
+    #     token: ${{ secrets.CODECOV_TOKEN }}
+    #     files: ./coverage/coverage-final.json
+    #     fail_ci_if_error: true
+    #     verbose: true
