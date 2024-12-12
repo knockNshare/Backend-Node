@@ -1,6 +1,7 @@
 // Import necessary modules
 const express = require('express');
 const bodyParser = require('body-parser');
+const sequelize = require('./config/database'); // Importer la config de la base
 
 // Initialize the app
 const app = express();
@@ -28,3 +29,18 @@ if (require.main === module) {
         console.log(`Server is running on http://localhost:${PORT}`);
     });
 }
+
+// Tester la connexion à la base
+(async () => {
+    try {
+        await sequelize.authenticate();
+        console.log('Connexion à la base de données réussie !');
+
+        const PORT = 3000;
+        app.listen(PORT, () => {
+            console.log(`Serveur en écoute sur http://localhost:${PORT}`);
+        });
+    } catch (error) {
+        console.error('Erreur de connexion à la base de données :', error);
+    }
+})();

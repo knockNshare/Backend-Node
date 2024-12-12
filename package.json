@@ -8,13 +8,22 @@
   },
   "jest": {
     "collectCoverage": true,
-    "coverageReporters": ["html", "lcov", "text-summary"]
+    "coverageReporters": [
+      "html",
+      "lcov",
+      "text-summary"
+    ]
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "express": "^4.21.1"
+    "body-parser": "^1.20.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.1",
+    "mysql": "^2.18.1",
+    "mysql2": "^3.11.5",
+    "sequelize": "^6.37.5"
   },
   "devDependencies": {
     "codecov": "^3.8.2",
