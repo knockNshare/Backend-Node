@@ -3,9 +3,25 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 
+const mysql = require('mysql');
+
+// Configuration de la base de données
+const db = mysql.createConnection({
+    host: 'localhost',
+    user: 'root',
+    password: 'hana1234', // mot de passe MySQL si nécessaire
+    database: 'projets_devops'
+});
+
+// Connection à la base de données
+db.connect((err) => {
+    if (err) throw err;
+    console.log('Connecté à la base de données MySQL');
+});
+
 // Initialize the app
 const app = express();
-const PORT = process.env.PORT || 5000; // Use environment variable or default to 3000
+const PORT = process.env.PORT || 5001; // Use environment variable or default to 3000
 
 // Middleware
 app.use(bodyParser.json()); // Parse JSON request bodies
@@ -18,6 +34,20 @@ app.get('/', (req, res) => {
 app.get('/api/hello', (req, res) => {
     const exampleData = { message: 'Helloo beautiful people!' };
     res.json(exampleData);
+});
+
+// Route pour l'inscription
+app.post('/api/signup', (req, res) => {
+    const { name, email, password } = req.body;
+
+    const sql = 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)';
+    db.query(sql, [name, email, password], (err, result) => {
+        if (err) {
+            res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur' });
+        } else {
+            res.status(201).json({ message: 'Utilisateur créé avec succès' });
+        }
+    });
 });
 
 //Ajout d'une route pour la connexion de l'utilisateur (authentification)

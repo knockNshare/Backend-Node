@@ -8,13 +8,18 @@
   },
   "jest": {
     "collectCoverage": true,
-    "coverageReporters": ["html", "lcov", "text-summary"]
+    "coverageReporters": [
+      "html",
+      "lcov",
+      "text-summary"
+    ]
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "express": "^4.21.1"
+    "express": "^4.21.1",
+    "mysql": "^2.18.1"
   },
   "devDependencies": {
     "codecov": "^3.8.2",
