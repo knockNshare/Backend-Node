@@ -37,7 +37,41 @@ app.get('/api/hello', (req, res) => {
 app.get("/get", (req,res) =>{
     res.json({message: "Voici les données"});
 });
+// Route pour l'inscription
+app.post('/api/signup', (req, res) => {
+    const { name, email, password } = req.body;
 
+    console.log('Requête reçue pour inscription :', { name, email, password }); // Log des données reçues
+
+    const sql = 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)';
+    db.query(sql, [name, email, password], (err, result) => {
+        if (err) {
+            console.error('Erreur SQL :', err); // Log des erreurs SQL
+            res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur' });
+        } else {
+            res.status(201).json({ message: 'Utilisateur créé avec succès' });
+        }
+    });
+});
+
+//Ajout d'une route pour la connexion de l'utilisateur (authentification)
+app.post('/api/login', (req, res) => {
+    const { email, password } = req.body;
+
+    const sql = 'SELECT * FROM users WHERE email = ? AND password = ?';
+    db.query(sql, [email, password], (err, results) => {
+        if (err) {
+            console.error('Erreur SQL :', err);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        if (results.length > 0) {
+            res.status(200).json({ message: 'Connexion réussie', user: results[0] });
+        } else {
+            res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+        }
+    });
+});
 // Démarrer le serveur
 if (require.main === module) {
     app.listen(PORT, () => {
