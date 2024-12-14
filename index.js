@@ -1,46 +1,48 @@
-// Import necessary modules
+require('dotenv').config({ path: './.env' });
+
+const mysql = require('mysql');
 const express = require('express');
 const bodyParser = require('body-parser');
-const sequelize = require('./config/database'); // Importer la config de la base
 
-// Initialize the app
+// Initialiser l'application Express
 const app = express();
-const PORT = process.env.PORT || 3000; // Use environment variable or default to 3000
+const PORT = process.env.PORT || 3000; // Utilisation de la variable d'environnement ou port par défaut
 
 // Middleware
 app.use(bodyParser.json()); // Parse JSON request bodies
 
+// Configuration et connexion MySQL avec les variables d'environnement
+var con = mysql.createConnection({
+    host: process.env.DB_HOST,      // Utilise la variable DB_HOST
+    user: process.env.DB_USER,      // Utilise la variable DB_USER
+    password: process.env.DB_PASSWORD, // Utilise la variable DB_PASSWORD
+    database: process.env.DB_NAME   // Utilise la variable DB_NAME
+});
+
+// Connexion à la base de données
+con.connect(function(err) {
+    if (err) throw err;
+    console.log("Connected to the database!");
+});
+
 // API Endpoints
 app.get('/', (req, res) => {
-    res.send('Welcome to the API!');
+    res.send('Bienvenue clara dans l API !');
 });
 
 app.get('/api/hello', (req, res) => {
     const exampleData = { message: 'Helloo beautiful people!' };
     res.json(exampleData);
 });
+app.get("/get", (req,res) =>{
+    res.json({message: "Voici les données"});
+});
 
-// Export the app for testing
-module.exports = app;
-
-// Start the server only if this file is executed directly
+// Démarrer le serveur
 if (require.main === module) {
     app.listen(PORT, () => {
-        console.log(`Server is running on http://localhost:${PORT}`);
+        console.log(`Serveur en écoute sur http://localhost:${PORT}`);
     });
 }
 
-// Tester la connexion à la base
-(async () => {
-    try {
-        await sequelize.authenticate();
-        console.log('Connexion à la base de données réussie !');
-
-        const PORT = 3000;
-        app.listen(PORT, () => {
-            console.log(`Serveur en écoute sur http://localhost:${PORT}`);
-        });
-    } catch (error) {
-        console.error('Erreur de connexion à la base de données :', error);
-    }
-})();
+module.exports = app;
