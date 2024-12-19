@@ -1,4 +1,4 @@
-require('dotenv').config({ path: './.env' });
+require('dotenv').config({ path: './.env' }); //dotenv permet de charger les variables d’environnement
 
 const mysql = require('mysql');
 const express = require('express');
