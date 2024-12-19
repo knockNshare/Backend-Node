@@ -764,7 +764,7 @@ app.post('/api/login', (req, res) => {
     const { email, password } = req.body;
 
     const sql = 'SELECT * FROM users WHERE email = ? AND password = ?';
-    db.query(sql, [email, password], (err, results) => {
+    con.query(sql, [email, password], (err, results) => {
         if (err) {
             console.error('Erreur SQL :', err);
             return res.status(500).json({ error: 'Erreur serveur' });
