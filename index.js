@@ -3,12 +3,14 @@ require('dotenv').config({ path: './.env' });
 const mysql = require('mysql');
 const express = require('express');
 const bodyParser = require('body-parser');
+const cors = require('cors');
+
 require('dotenv').config(); // This will load the variables from the .env file
 
 // Initialiser l'application Express
 const app = express();
 const PORT = process.env.PORT || 3000; // Utilisation de la variable d'environnement ou port par défaut
-
+app.use(cors());
 // Middleware
 app.use(bodyParser.json()); // Parse JSON request bodies
 
