@@ -83,10 +83,10 @@ app.post('/api/login', (req, res) => {
 
 // Route for creating an event
 app.post('/api/events', (req, res) => {
-    const { title, description, date, address, category,imageURL,latitude, longitude, creator_id } = req.body;
+    const { title, description, date, category, imageURL, address, latitude, longitude, creator_id } = req.body;
 
-    const sql = 'INSERT INTO events (title, description, date,category,imageURL, address, latitude, longitude, creator_id) VALUES (?, ?, ?, ?, ?, ?, ?,?,?)';
-    con.query(sql, [title, description, date, address, category,imageURL,latitude, longitude, creator_id], (err, result) => {
+    const sql = 'INSERT INTO events (title, description, date, category, imageURL, address, latitude, longitude, creator_id) VALUES (?, ?, ?, ?, ?, ?, ?,?,?)';
+    con.query(sql, [title, description, date, category, imageURL, address, latitude, longitude, creator_id], (err, result) => {
         if (err) {
             console.error('Erreur SQL :', err);
             return res.status(500).json({ error: 'Erreur lors de la création de l\'événement' });
