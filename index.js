@@ -557,26 +557,30 @@ app.get("/users/:id/contact", (req, res) => {
         });
     });
 });
+// Route pour récupérer les propositions d'un utilisateur spécifique
+app.get("/propositions/users/:id", (req, res) => {
+    const userId = req.params.id; // ID de l'utilisateur connecté
 
-// Route pour récupérer toutes les propositions
-app.get("/propositions", (req, res) => {
     const query = `
         SELECT p.id, p.category_id, p.proposer_id, p.title, p.description, p.is_active, p.created_at, p.updated_at,
-               c.service_type AS category_name,
-               u.name AS proposer_name, u.email AS proposer_email
+               c.service_type AS category_name
         FROM propositions p
-                 JOIN categories c ON p.category_id = c.id
-                 JOIN users u ON p.proposer_id = u.id
+        JOIN categories c ON p.category_id = c.id
+        WHERE p.proposer_id = ?
     `;
 
-    con.query(query, (err, results) => {
+    con.query(query, [userId], (err, results) => {
         if (err) {
             console.error("Error fetching propositions:", err);
-            return res.status(500).json({ error: "An error occurred while fetching propositions." });
+            return res.status(500).json({ error: "An error occurred while fetching user propositions." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "No propositions found for this user." });
         }
 
         res.json({
-            message: "Here are the propositions",
+            message: "Here are the propositions for the user",
             data: results
         });
     });
