@@ -2,7 +2,7 @@ require('dotenv').config({ path: './.env' }); //dotenv permet de charger les var
 const cors = require('cors');
 
 
-const mysql = require('mysql2'); 
+const mysql = require('mysql2'); //mettre mysql au lieu de mysql2
 const express = require('express');
 const bodyParser = require('body-parser');
 require('dotenv').config(); // This will load the variables from the .env file
@@ -44,19 +44,22 @@ app.get("/get", (req,res) =>{
 });
 // Route pour l'inscription
 app.post('/api/signup', (req, res) => {
-    const { name, email, password } = req.body;
 
-    console.log('Requête reçue pour inscription :', { name, email, password }); // Log des données reçues
+    const { name, email, phone_number, password, city_id } = req.body;
 
-    const sql = 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)';
-    con.query(sql, [name, email, password], (err, result) => {
-        if (err) {
-            console.error('Erreur SQL :', err); // Log des erreurs SQL
-            res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur' });
-        } else {
-            res.status(201).json({ message: 'Utilisateur créé avec succès' });
-        }
-    });
+    if (!name || !email || !phone_number || !password || !city_id) {
+        return res.status(400).json({ error: 'Tous les champs requis doivent être remplis.' });
+    }
+
+    const sql = 'INSERT INTO users (name, email, phone_number, password, city_id) VALUES (?, ?, ?, ?, ?)';
+    con.query(sql, [name, email, phone_number, password, city_id], (err, result) => {
+    if (err) {
+        console.error('Erreur SQL :', err);
+        res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur.' });
+    } else {
+        res.status(201).json({ message: 'Utilisateur créé avec succès' });
+    }
+});
 });
 
 //Ajout d'une route pour la connexion de l'utilisateur (authentification)
@@ -304,6 +307,252 @@ app.get('/api/propositions/search', (req, res) => {
 
             // Return the matching propositions
             res.status(200).json(results);
+        });
+    });
+
+    
+});
+
+app.get('/api/categories', (req, res) => {
+    const sql = 'SELECT id, service_type FROM categories';
+
+    con.query(sql, (err, results) => {
+        if (err) {
+            console.error('Erreur SQL :', err);
+            return res.status(500).json({ error: 'Failed to fetch categories' });
+        }
+        res.json(results);
+    });
+});
+
+//Ajouter une proposition
+app.post("/propositions", (req, res) => {
+    const { category_id, proposer_id, title, description } = req.body;
+
+    if (!category_id || !proposer_id || !title || !description) {
+        return res.status(400).json({
+            error: "Missing required fields: category_id, proposer_id, title, and description."
+        });
+    }
+
+    const query = `
+        INSERT INTO propositions (category_id, proposer_id, title, description, is_active, created_at, updated_at)
+        VALUES (?, ?, ?, ?, TRUE, NOW(), NOW())`
+    ;
+
+    con.query(query, [category_id, proposer_id, title, description], (err, results) => {
+        if (err) {
+            console.error("Error adding proposition:", err);
+            return res.status(500).json({
+                error: "An error occurred while adding the proposition."
+            });
+        }
+
+        res.status(201).json({
+            message: "Proposition successfully created",
+            data: {
+                id: results.insertId,
+                category_id,
+                proposer_id,
+                title,
+                description,
+                is_active: true,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }
+        });
+    });
+});
+
+// ajouter un nouvel intérêt.
+app.post("/interests", (req, res) => {
+    const { proposition_id, interested_user_id, start_date, end_date } = req.body;
+
+    // Vérification des champs requis
+    if (!proposition_id || !interested_user_id || !start_date) {
+        return res.status(400).json({
+            error: "Missing required fields: proposition_id, interested_user_id, and start_date are required."
+        });
+    }
+
+    // Vérifie que les clés étrangères existent
+    const checkQuery = `
+        SELECT
+                (SELECT COUNT(*) FROM propositions WHERE id = ?) AS proposition_exists,
+                (SELECT COUNT(*) FROM users WHERE id = ?) AS user_exists
+    `;
+
+    con.query(checkQuery, [proposition_id, interested_user_id], (err, results) => {
+        if (err) {
+            console.error("Error checking foreign keys:", err);
+            return res.status(500).json({
+                error: "An error occurred while validating foreign keys."
+            });
+        }
+
+        const { proposition_exists, user_exists } = results[0];
+
+        // Vérifie si les clés étrangères existent
+        if (!proposition_exists || !user_exists) {
+            return res.status(400).json({
+                error: "Invalid foreign keys: proposition_id or interested_user_id does not exist."
+            });
+        }
+
+        // Si tout est valide, insère l'intérêt
+        const query = `
+            INSERT INTO interests (proposition_id, interested_user_id, start_date, end_date, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
+        `;
+
+        con.query(query, [proposition_id, interested_user_id, start_date, end_date || null], (err, results) => {
+            if (err) {
+                console.error("SQL Error:", err);
+                return res.status(500).json({
+                    error: "An error occurred while adding the interest."
+                });
+            }
+
+            res.status(201).json({
+                message: "Interest successfully created",
+                data: {
+                    id: results.insertId,
+                    proposition_id,
+                    interested_user_id,
+                    start_date,
+                    end_date,
+                    status: "pending",
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }
+            });
+        });
+    });
+});
+
+
+
+// modifier un intérêt existant par son ID.
+app.put("/interests/:id", (req, res) => {
+    const interestId = req.params.id;
+    const { start_date, end_date, status } = req.body;
+
+    if (!start_date && !end_date && !status) {
+        return res.status(400).json({
+            error: "No fields provided to update."
+        });
+    }
+
+    let fields = [];
+    let values = [];
+    if (start_date) {
+        fields.push("start_date = ?");
+        values.push(start_date);
+    }
+    if (end_date) {
+        fields.push("end_date = ?");
+        values.push(end_date);
+    }
+    if (status) {
+        fields.push("status = ?");
+        values.push(status);
+    }
+
+    values.push(interestId);
+
+    const query = `
+        UPDATE interests
+        SET ${fields.join(", ")}, updated_at = NOW()
+        WHERE id = ?
+    `;
+
+    con.query(query, values, (err, results) => {
+        if (err) {
+            console.error("Error updating interest:", err);
+            return res.status(500).json({
+                error: "An error occurred while updating the interest."
+            });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({
+                error: "Interest not found."
+            });
+        }
+
+        res.json({
+            message: "Interest successfully updated",
+            updatedFields: { start_date, end_date, status }
+        });
+    });
+});
+
+app.get("/interests/received/:id", (req, res) => {
+    /*
+    C’est ce que fait la route /interests/received/:id.
+	•	Cette route récupère les intérêts pour lesquels l’utilisateur est le proposer_id.
+	•	Exemple : l’utilisateur a posté une annonce pour “Cleaning” → il voit toutes les personnes intéressées.
+     */
+    const userId = req.params.id; // ID de l'utilisateur (offreur)
+
+    const query = `
+        SELECT i.id, i.proposition_id, i.interested_user_id, i.start_date, i.end_date, i.status, i.created_at, i.updated_at,
+               p.title AS proposition_title, p.description AS proposition_description,
+               u.name AS interested_user_name, u.email AS interested_user_email
+        FROM interests i
+        JOIN propositions p ON i.proposition_id = p.id
+        JOIN users u ON i.interested_user_id = u.id
+        WHERE p.proposer_id = ?
+    `;
+
+    con.query(query, [userId], (err, results) => {
+        if (err) {
+            console.error("Error fetching received interests for user:", err);
+            return res.status(500).json({
+                error: "An error occurred while fetching the interests received by the user."
+            });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({
+                error: "No interests received by the user."
+            });
+        }
+
+        res.json({
+            message: "Here are the interests received by the user",
+            data: results
+        });
+    });
+});
+
+// Récupérer les coordonnées d'un utilisateur par ID
+app.get("/users/:id/contact", (req, res) => {
+    const userId = req.params.id;
+
+    const query = `
+        SELECT phone_number, email
+        FROM users
+        WHERE id = ?
+    `;
+
+    con.query(query, [userId], (err, results) => {
+        if (err) {
+            console.error("Erreur lors de la récupération des coordonnées :", err);
+            return res.status(500).json({
+                error: "Une erreur est survenue lors de la récupération des coordonnées."
+            });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({
+                error: "Utilisateur non trouvé."
+            });
+        }
+
+        res.json({
+            message: "Coordonnées récupérées avec succès.",
+            data: results[0]
         });
     });
 });
