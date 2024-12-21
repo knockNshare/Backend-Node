@@ -1,5 +1,6 @@
+
 require('dotenv').config({ path: './.env' }); //dotenv permet de charger les variables d’environnement
-const cors = require('cors');
+const cors = require('cors'); //Pour authoriser les requetes du front d'arriver
 
 
 const mysql = require('mysql2'); //mettre mysql au lieu de mysql2
