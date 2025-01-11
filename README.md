@@ -23,10 +23,10 @@
 
 1. Clonez le dépôt :
 
-git clone https://github.com/knockNshare/Frontend.git
-cd Frontend
+  git clone https://github.com/knockNshare/Frontend.git
+  cd Frontend
 
-2. Installez les dépendances :
+3. Installez les dépendances :
 
 npm install
 
