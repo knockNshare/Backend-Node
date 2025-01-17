@@ -111,8 +111,7 @@ CREATE TABLE `events` (
   `description` text NOT NULL,
   `date` datetime NOT NULL,
   `address` varchar(255) DEFAULT NULL,
-  `latitude` decimal(9,6) DEFAULT NULL,
-  `longitude` decimal(9,6) DEFAULT NULL,
+  `city_id` int NOT NULL,
   `creator_id` int NOT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -120,6 +119,8 @@ CREATE TABLE `events` (
   `imageURL` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `creator_id` (`creator_id`),
+  KEY `city_id` (`city_id`),
+  CONSTRAINT `events_city_fk` FOREIGN KEY (`city_id`) REFERENCES `cities` (`id`),
   CONSTRAINT `events_ibfk_1` FOREIGN KEY (`creator_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -130,8 +131,17 @@ CREATE TABLE `events` (
 
 LOCK TABLES `events` WRITE;
 /*!40000 ALTER TABLE `events` DISABLE KEYS */;
-INSERT INTO `events` VALUES (1,'brocante','brocante','2025-01-16 12:42:00','14 Rue Chaillon',47.299039,-2.189461,1,'2025-01-16 12:42:32','2025-01-16 12:42:32','Réunion',NULL),(2,'brocante','bc','2025-01-16 13:20:00','14 Rue Chaillon',47.299039,-2.189461,1,'2025-01-16 13:20:43','2025-01-16 13:20:43','Réunion',NULL),(3,'test','test','2025-01-16 13:26:00','test',34.021909,50.695495,1,'2025-01-16 13:26:31','2025-01-16 13:26:31','Réunion',NULL);
+
+
+-- Updated INSERT statements
+INSERT INTO `events` (id, title, description, date, address, city_id, creator_id, created_at, updated_at, category, imageURL) 
+VALUES 
+(1, 'brocante', 'brocante', '2025-01-16 12:42:00', '14 Rue Chaillon',13001, 1, '2025-01-16 12:42:32', '2025-01-16 12:42:32', 'Réunion', NULL),
+(2, 'brocante', 'bc', '2025-01-16 13:20:00', '14 Rue Chaillon', 69001, 2, '2025-01-16 13:20:43', '2025-01-16 13:20:43', 'Réunion', NULL),
+(3, 'test', 'test', '2025-01-16 13:26:00', 'test', 75001, 3, '2025-01-16 13:26:31', '2025-01-16 13:26:31', 'Réunion', NULL);
+
 /*!40000 ALTER TABLE `events` ENABLE KEYS */;
+
 UNLOCK TABLES;
 
 --

@@ -207,6 +207,70 @@ app.get('/api/events/region/:user_id', (req, res) => {
         });
     });
 });
+
+const getEventsByCity = async (city_id) => {
+    // SQL query to retrieve events by city_id
+    const query = `
+        SELECT *
+        FROM events
+        WHERE city_id = ?;  
+    `;
+
+    try {
+        // Run the query with the promise-based API
+        const [rows] = await con.promise().query(query, [city_id]);  // Use promise().query() and pass city_id
+        return rows;  // `rows` is the result of the query
+    } catch (error) {
+        console.error('Error fetching events:', error);
+        throw error; // Propagate the error
+    }
+};
+
+app.get('/api/events/city/:city_id', async (req, res) => {
+    console.log("I get events by city");
+
+    // Access city_id from the route parameters
+    const { city_id } = req.params;  // Access city_id via req.params
+
+    try {
+        // Fetch events by city_id from the database
+        const events = await getEventsByCity(city_id);
+        res.json(events);  // Send the result as JSON
+    } catch (error) {
+        console.error('Error fetching events by city:', error);
+        res.status(500).send("Internal Server Error");  // Handle any errors
+    }
+});
+
+const getcities = async () => {
+    // SQL query to retrieve the cities
+    const query = `
+        SELECT *
+        FROM cities;
+    `;
+
+    try {
+        // Run the query with the promise-based API
+        const [rows] = await con.promise().query(query);  // Use promise().query() here
+        return rows;  // `rows` is the result of the query
+    } catch (error) {
+        console.error('Error fetching cities:', error);
+        throw error; // Propagate the error
+    }
+};
+app.get('/cities', async (req, res) => {
+    console.log("I entered cities");
+
+    try {
+        // Fetch cities from the database
+        const cities = await getcities();
+        res.json(cities);  // Send the result as JSON
+    } catch (error) {
+        console.error('Error fetching cities:', error);
+        res.status(500).send("Internal Server Error");  // Handle any errors
+    }
+});
+
 app.post('/api/events/participate', (req, res) => {
     const { event_id, user_id } = req.body;
 
@@ -594,6 +658,39 @@ app.get("/categories/:id/propositions", (req, res) => {
         });
     });
 });
+
+
+const getPropositionsBySearch = async (searchTerm) => {
+    const query = `
+        SELECT *
+        FROM propositions
+        WHERE title LIKE ? OR description LIKE ?;
+    `;
+    try {
+        const [rows] = await con.promise().query(query, [`%${searchTerm}%`, `%${searchTerm}%`]);
+        return rows;
+    } catch (error) {
+        console.error('Error fetching propositions:', error);
+        throw error;
+    }
+};
+// Define route to search for propositions by title or description
+app.get('/api/propositions/searchText', async (req, res) => {
+    const searchTerm = req.query.search;  // Get search term from query parameter
+
+    if (!searchTerm) {
+        return res.status(400).send("Search term is required");  // If no search term, return an error
+    }
+
+    try {
+        const propositions = await getPropositionsBySearch(searchTerm);  // Fetch propositions from DB
+        res.json(propositions);  // Send the propositions as a JSON response
+    } catch (error) {
+        console.error('Error fetching propositions:', error);
+        res.status(500).send("Internal Server Error");  // Send server error if there's an issue
+    }
+});
+
 
 // ajouter un nouvel intérêt.
 app.post("/interests", (req, res) => {
