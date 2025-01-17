@@ -646,6 +646,39 @@ app.get("/categories/:id/propositions", (req, res) => {
     });
 });
 
+
+const getPropositionsBySearch = async (searchTerm) => {
+    const query = `
+        SELECT *
+        FROM propositions
+        WHERE title LIKE ? OR description LIKE ?;
+    `;
+    try {
+        const [rows] = await con.promise().query(query, [`%${searchTerm}%`, `%${searchTerm}%`]);
+        return rows;
+    } catch (error) {
+        console.error('Error fetching propositions:', error);
+        throw error;
+    }
+};
+// Define route to search for propositions by title or description
+app.get('/api/propositions/searchText', async (req, res) => {
+    const searchTerm = req.query.search;  // Get search term from query parameter
+
+    if (!searchTerm) {
+        return res.status(400).send("Search term is required");  // If no search term, return an error
+    }
+
+    try {
+        const propositions = await getPropositionsBySearch(searchTerm);  // Fetch propositions from DB
+        res.json(propositions);  // Send the propositions as a JSON response
+    } catch (error) {
+        console.error('Error fetching propositions:', error);
+        res.status(500).send("Internal Server Error");  // Send server error if there's an issue
+    }
+});
+
+
 // ajouter un nouvel intérêt.
 app.post("/interests", (req, res) => {
     const { proposition_id, interested_user_id, start_date, end_date } = req.body;
