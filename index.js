@@ -108,6 +108,19 @@ app.post('/api/events', (req, res) => {
     });
 });
 
+// Route to get all events
+app.get('/api/events', (req, res) => {
+    const sql = 'SELECT * FROM events';
+
+    con.query(sql, (err, results) => {
+        if (err) {
+            console.error('Erreur SQL :', err);
+            return res.status(500).json({ error: 'Erreur lors de la récupération des événements.' });
+        }
+        res.json(results);
+    });
+});
+
 // Route to get events by user ID (as creator or participant)
 app.get('/api/events/user/:user_id', (req, res) => {
     const userId = req.params.user_id;
