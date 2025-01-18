@@ -641,7 +641,7 @@ app.get("/propositions/users/:id", (req, res) => {
         }
 
         if (results.length === 0) {
-            return res.status(404).json({ error: "No propositions found for this user." });
+            return res.json([]); // 🔥 Retourne une liste vide au lieu d'une erreur 404
         }
 
         res.json({
@@ -743,77 +743,93 @@ app.get('/api/propositions/searchText', async (req, res) => {
 
 // Ajouter un nouvel intérêt.
 // Envoie une notification au proposeur en temps réel lorsqu’une demande est faite.
+// Ajouter un nouvel intérêt + Notification en temps réel
 app.post('/interests', (req, res) => {
     const { proposition_id, interested_user_id } = req.body;
 
-    // Vérifier les paramètres requis
     if (!proposition_id || !interested_user_id) {
         return res.status(400).json({ error: "Proposition ID et utilisateur intéressé sont requis." });
     }
 
-    // Enregistrer la demande d’intérêt dans la BDD
-    const insertInterestSQL = `
-        INSERT INTO interests (proposition_id, interested_user_id, start_date, status) 
-        VALUES (?, ?, NOW(), 'pending')
-    `;
+    // 🔥 Étape 1 : Récupérer le nom de l'utilisateur intéressé
+    const getUserNameSQL = `SELECT name FROM users WHERE id = ?`;
 
-    con.query(insertInterestSQL, [proposition_id, interested_user_id], (err, result) => {
+    con.query(getUserNameSQL, [interested_user_id], (err, userResult) => {
         if (err) {
-            console.error("❌ Erreur lors de l'insertion de l'intérêt :", err);
+            console.error("Erreur lors de la récupération de l'utilisateur :", err);
             return res.status(500).json({ error: "Erreur interne du serveur" });
         }
 
-        // Récupérer l'ID du proposeur et le titre de la proposition
-        const getProposerSQL = `
-            SELECT p.proposer_id, p.title, u.name AS interested_user_name
-            FROM propositions p
-            JOIN users u ON u.id = ?
-            WHERE p.id = ?
+        if (userResult.length === 0) {
+            return res.status(404).json({ error: "Utilisateur non trouvé." });
+        }
+
+        const interested_user_name = userResult[0].name; // 🔥 Récupération du nom
+
+        // 🔥 Étape 2 : Insérer l'intérêt dans la base de données
+        const insertInterestSQL = `
+            INSERT INTO interests (proposition_id, interested_user_id, start_date, status) 
+            VALUES (?, ?, NOW(), 'pending')
         `;
 
-        con.query(getProposerSQL, [interested_user_id, proposition_id], (err, propositionResult) => {
+        con.query(insertInterestSQL, [proposition_id, interested_user_id], (err, result) => {
             if (err) {
-                console.error("❌ Erreur lors de la récupération de la proposition :", err);
+                console.error("Erreur lors de l'insertion de l'intérêt :", err);
                 return res.status(500).json({ error: "Erreur interne du serveur" });
             }
 
-            if (propositionResult.length > 0) {
-                const proposer_id = propositionResult[0].proposer_id;
-                const title = propositionResult[0].title;
-                const interestedUserName = propositionResult[0].interested_user_name; // Récupération du nom de l'utilisateur intéressé
+            const interestId = result.insertId; // 🔥 Récupérer l'ID de l'intérêt inséré
 
-                // Construire le message de notification
-                const notifMessage = `${interestedUserName} est intéressé(e) par votre offre : ${title}`;
+            // 🔥 Étape 3 : Récupérer l'ID du proposeur et le titre de l'offre
+            const getProposerSQL = `SELECT proposer_id, title FROM propositions WHERE id = ?`;
 
-                // Enregistrer la notification en base de données
-                const insertNotifSQL = `
-                    INSERT INTO notifications (user_id, type, message, related_entity_id) 
-                    VALUES (?, ?, ?, ?)
-                `;
+            con.query(getProposerSQL, [proposition_id], (err, propositionResult) => {
+                if (err) {
+                    console.error("Erreur lors de la récupération de la proposition :", err);
+                    return res.status(500).json({ error: "Erreur interne du serveur" });
+                }
 
-                con.query(insertNotifSQL, [proposer_id, "interest_request", notifMessage, proposition_id], (err, notifResult) => {
-                    if (err) {
-                        console.error("❌ Erreur lors de l'insertion de la notification :", err);
-                        return res.status(500).json({ error: "Erreur interne du serveur" });
-                    }
+                if (propositionResult.length > 0) {
+                    const proposer_id = propositionResult[0].proposer_id;
+                    const title = propositionResult[0].title;
 
-                    // Envoyer la notification en temps réel via WebSocket
-                    const io = req.app.get("socketio");
-                    console.log("📡 Emission WebSocket : notification envoyée à", proposer_id);
-                    io.emit(`notification-${proposer_id}`, { message: notifMessage, related_entity_id: proposition_id });
+                    // 🔥 Étape 4 : Enregistrer la notification avec le nom et non l'ID
+                    const insertNotifSQL = `
+                        INSERT INTO notifications (user_id, type, message, related_entity_id) 
+                        VALUES (?, ?, ?, ?)
+                    `;
 
-                    console.log("✅ WebSocket émis !");
-                    res.status(201).json({ message: "Demande d'intérêt envoyée avec succès." });
-                });
-            } else {
-                res.status(404).json({ error: "Proposition ou utilisateur intéressé non trouvé." });
-            }
+                    const notifMessage = `${interested_user_name} est intéressé(e) par votre offre : ${title}`;
+
+                    con.query(insertNotifSQL, [proposer_id, "interest_request", notifMessage, interestId], (err, notifResult) => {
+                        if (err) {
+                            console.error("Erreur lors de l'insertion de la notification :", err);
+                            return res.status(500).json({ error: "Erreur interne du serveur" });
+                        }
+
+                        // 🔥 Étape 5 : Émettre la notification en temps réel avec `type`
+                        const io = req.app.get("socketio");
+                        console.log("📡 Emission WebSocket : notification envoyée à", proposer_id);
+                        io.emit(`notification-${proposer_id}`, { 
+                            id: notifResult.insertId,  // 🔥 Ajout de l'ID pour permettre la suppression
+                            message: notifMessage,
+                            related_entity_id: interestId,
+                            type: "interest_request"  // 🔥 Ajout du type pour éviter l'erreur dans le front
+                        });                        
+                        console.log("✅ WebSocket émis !");
+                        res.status(201).json({ message: "Demande d'intérêt envoyée avec succès." });
+                    });
+                } else {
+                    res.status(404).json({ error: "Proposition non trouvée." });
+                }
+            });
         });
     });
 });
 // modifier un intérêt existant par son ID.
 //Envoie une notification en temps réel à l’intéressé quand sa demande est acceptée ou refusée.
 //utiliser con au lieu de db
+// 🔥 Modifier un intérêt (acceptation/refus) + Notifier en temps réel l'intéressé
 app.put('/interests/:id', (req, res) => {
     const { status } = req.body;
     const { id } = req.params;
@@ -822,14 +838,14 @@ app.put('/interests/:id', (req, res) => {
         return res.status(400).json({ error: "Statut invalide." });
     }
 
-    // Mettre à jour le statut de la demande
+    // Mettre à jour le statut
     con.query("UPDATE interests SET status = ? WHERE id = ?", [status, id], (err, result) => {
         if (err) {
             console.error("Erreur SQL lors de la mise à jour de la demande :", err);
             return res.status(500).json({ error: "Erreur serveur" });
         }
 
-        // Récupérer les infos de la demande pour envoyer la notification
+        // 🔥 Étape 1 : Récupérer les infos de la demande
         con.query("SELECT interested_user_id, proposition_id FROM interests WHERE id = ?", [id], (err, interestResults) => {
             if (err || interestResults.length === 0) {
                 console.error("Erreur SQL lors de la récupération de la demande :", err);
@@ -839,23 +855,52 @@ app.put('/interests/:id', (req, res) => {
             const interested_user_id = interestResults[0].interested_user_id;
             const proposition_id = interestResults[0].proposition_id;
 
-            const message = status === "accepted"
-                ? "Votre demande a été acceptée ! Vous pouvez contacter le proposeur."
-                : "Votre demande a été refusée.";
+            // 🔥 Étape 2 : Récupérer les infos du proposeur
+            con.query("SELECT proposer_id FROM propositions WHERE id = ?", [proposition_id], (err, proposerResults) => {
+                if (err || proposerResults.length === 0) {
+                    console.error("Erreur SQL lors de la récupération du proposeur :", err);
+                    return res.status(500).json({ error: "Erreur serveur" });
+                }
 
-            // Enregistrer la notification
-            con.query("INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
-                [interested_user_id, `interest_${status}`, message, proposition_id], (err) => {
-                    if (err) {
-                        console.error("Erreur SQL lors de l'ajout de la notification :", err);
+                const proposer_id = proposerResults[0].proposer_id;
+
+                con.query("SELECT name, email, phone_number FROM users WHERE id = ?", [proposer_id], (err, proposerData) => {
+                    if (err || proposerData.length === 0) {
+                        console.error("Erreur SQL lors de la récupération des infos du proposeur :", err);
                         return res.status(500).json({ error: "Erreur serveur" });
                     }
 
-                    // Envoyer la notification en temps réel
-                    const io = req.app.get("socketio");
-                    io.emit(`notification-${interested_user_id}`, { message });
+                    const proposer_name = proposerData[0].name;
+                    const proposer_email = proposerData[0].email;
+                    const proposer_phone = proposerData[0].phone_number;
 
-                    res.json({ message: `Demande ${status} avec succès.` });
+                    // 🔥 Construire le message en fonction du statut
+                    const message = status === "accepted"
+                        ? `🎉 ${proposer_name} a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 ${proposer_email} 📞 ${proposer_phone}`
+                        : `❌ ${proposer_name} a refusé votre demande pour \"Nettoyage de printemps\".`;
+
+                    // 🔥 Étape 3 : Enregistrer la notification avec l'ID
+                    con.query("INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
+                        [interested_user_id, `interest_${status}`, message, proposition_id], (err, notifResult) => {
+                            if (err) {
+                                console.error("Erreur SQL lors de l'ajout de la notification :", err);
+                                return res.status(500).json({ error: "Erreur serveur" });
+                            }
+
+                            const insertedNotifId = notifResult.insertId;
+
+                            // 🔥 Étape 4 : Envoyer la notification en temps réel
+                            const io = req.app.get("socketio");
+                            io.emit(`notification-${interested_user_id}`, { 
+                                id: insertedNotifId, 
+                                message, 
+                                related_entity_id: proposition_id,
+                                type: `interest_${status}`
+                            });
+
+                            res.json({ message: `Demande ${status} avec succès.` });
+                    });
+                });
             });
         });
     });
@@ -887,9 +932,7 @@ app.get("/interests/received/:id", (req, res) => {
         }
 
         if (results.length === 0) {
-            return res.status(404).json({
-                error: "No interests received by the user."
-            });
+            return res.json([]); // 🔥 Retourne une liste vide au lieu d'une erreur 404
         }
 
         res.json({
@@ -980,6 +1023,39 @@ app.delete("/interests/users/:id", (req, res) => {
             message: "Interests successfully deleted for the user",
             deletedCount: results.affectedRows
         });
+    });
+});
+
+
+// 🔥 Récupérer les demandes envoyées par l'utilisateur (avec email et numéro du proposeur)
+app.get('/interests/sent/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    const getSentInterestsSQL = `
+        SELECT i.id, i.status, p.title AS proposition_title, 
+               u.email AS proposer_email, u.phone_number AS proposer_phone
+        FROM interests i
+        JOIN propositions p ON i.proposition_id = p.id
+        JOIN users u ON p.proposer_id = u.id
+        WHERE i.interested_user_id = ?
+    `;
+
+    con.query(getSentInterestsSQL, [userId], (err, results) => {
+        if (err) {
+            console.error("Erreur lors de la récupération des demandes envoyées :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur" });
+        }
+
+        // 🔥 Reformater la réponse pour structurer correctement les contacts
+        const formattedResults = results.map(interest => ({
+            ...interest,
+            proposer_contact: {
+                email: interest.proposer_email,
+                phone: interest.proposer_phone
+            }
+        }));
+
+        res.json({ data: formattedResults });
     });
 });
 
@@ -1077,32 +1153,63 @@ app.post("/notifications", (req, res) => {
     });
 });
 
-// Récupérer les Notifications d’un Utilisateur
-//utiliser con au lieu de db
-app.get('/notifications/:user_id', (req, res) => {
-    const { user_id } = req.params;
-    con.query(
-        'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC',
-        [user_id],
-        (err, results) => {
-            if (err) {
-                console.error('Erreur SQL lors de la récupération des notifications:', err);
-                return res.status(500).json({ error: 'Erreur interne du serveur' });
-            }
-            res.json(results);
-        }
-    );
-});
-// Supprimer une Notification (facultatif)
-//utiliser con au lieu de db
-app.delete('/notifications/:id', (req, res) => {
-    const { id } = req.params;
-    con.query('DELETE FROM notifications WHERE id = ?', [id], (err) => {
+app.get('/notifications/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    if (!userId) {
+        return res.status(400).json({ error: "userId est requis." });
+    }
+
+    const sql = "SELECT * FROM notifications WHERE user_id = ?";
+    con.query(sql, [userId], (err, result) => {
         if (err) {
-            console.error('Erreur SQL lors de la suppression de la notification:', err);
-            return res.status(500).json({ error: 'Erreur interne du serveur' });
+            console.error("Erreur récupération des notifications :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur." });
         }
-        res.json({ message: 'Notification supprimée.' });
+
+        if (result.length === 0) {
+            return res.json([]); // 🔥 Retourne une liste vide au lieu d'une erreur 404
+        }
+
+        res.json(result);
+    });
+});
+
+// 🔥 Supprimer une notification par ID
+app.delete('/notifications/:id', (req, res) => {
+    const notificationId = req.params.id;
+
+    const deleteNotifSQL = `DELETE FROM notifications WHERE id = ?`;
+
+    con.query(deleteNotifSQL, [notificationId], (err, result) => {
+        if (err) {
+            console.error("Erreur lors de la suppression de la notification :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur" });
+        }
+
+        if (result.affectedRows > 0) {
+            console.log(`🗑️ Notification ${notificationId} supprimée.`);
+            res.json({ message: "Notification supprimée avec succès." });
+        } else {
+            res.status(404).json({ error: "Notification non trouvée." });
+        }
+    });
+});
+
+// 🔥 Supprimer toutes les notifications d'un utilisateur
+app.delete('/notifications/all/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    const deleteAllNotifSQL = `DELETE FROM notifications WHERE user_id = ?`;
+
+    con.query(deleteAllNotifSQL, [userId], (err, result) => {
+        if (err) {
+            console.error("Erreur lors de la suppression des notifications :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur" });
+        }
+
+        console.log(`🗑️ Toutes les notifications de l'utilisateur ${userId} supprimées.`);
+        res.json({ message: "Toutes les notifications ont été supprimées." });
     });
 });
 
