@@ -155,7 +155,7 @@ CREATE TABLE `interests` (
   KEY `interested_user_id` (`interested_user_id`),
   CONSTRAINT `interests_ibfk_1` FOREIGN KEY (`proposition_id`) REFERENCES `propositions` (`id`) ON DELETE CASCADE,
   CONSTRAINT `interests_ibfk_2` FOREIGN KEY (`interested_user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -164,6 +164,7 @@ CREATE TABLE `interests` (
 
 LOCK TABLES `interests` WRITE;
 /*!40000 ALTER TABLE `interests` DISABLE KEYS */;
+INSERT INTO `interests` VALUES (1,3,6,'2025-01-17 17:54:56',NULL,'accepted','2025-01-17 17:54:56','2025-01-18 10:37:14'),(2,3,6,'2025-01-17 18:01:10',NULL,'pending','2025-01-17 18:01:10','2025-01-17 18:01:10'),(3,3,5,'2025-01-17 18:01:59',NULL,'pending','2025-01-17 18:01:59','2025-01-17 18:01:59'),(4,3,6,'2025-01-17 18:02:40',NULL,'pending','2025-01-17 18:02:40','2025-01-17 18:02:40'),(5,3,8,'2025-01-17 21:32:05',NULL,'accepted','2025-01-17 21:32:05','2025-01-18 14:48:31'),(6,3,8,'2025-01-17 21:33:12',NULL,'accepted','2025-01-17 21:33:12','2025-01-18 15:31:34'),(7,3,8,'2025-01-17 21:35:52',NULL,'pending','2025-01-17 21:35:52','2025-01-17 21:35:52'),(8,3,8,'2025-01-17 22:30:21',NULL,'pending','2025-01-17 22:30:21','2025-01-17 22:30:21'),(9,3,8,'2025-01-17 22:42:32',NULL,'pending','2025-01-17 22:42:32','2025-01-17 22:42:32'),(10,3,8,'2025-01-18 10:57:31',NULL,'pending','2025-01-18 10:57:31','2025-01-18 10:57:31'),(11,3,8,'2025-01-18 11:27:20',NULL,'pending','2025-01-18 11:27:20','2025-01-18 11:27:20'),(12,3,8,'2025-01-18 11:27:30',NULL,'pending','2025-01-18 11:27:30','2025-01-18 11:27:30'),(13,3,8,'2025-01-18 11:28:19',NULL,'pending','2025-01-18 11:28:19','2025-01-18 11:28:19'),(14,3,8,'2025-01-18 11:32:58',NULL,'rejected','2025-01-18 11:32:58','2025-01-18 14:36:39'),(15,3,8,'2025-01-18 12:08:04',NULL,'accepted','2025-01-18 12:08:04','2025-01-18 14:36:30'),(16,3,8,'2025-01-18 12:08:13',NULL,'pending','2025-01-18 12:08:13','2025-01-18 12:08:13'),(17,3,7,'2025-01-18 12:13:10',NULL,'pending','2025-01-18 12:13:10','2025-01-18 12:13:10'),(18,3,7,'2025-01-18 12:16:41',NULL,'pending','2025-01-18 12:16:41','2025-01-18 12:16:41'),(19,3,7,'2025-01-18 12:27:20',NULL,'pending','2025-01-18 12:27:20','2025-01-18 12:27:20'),(20,3,7,'2025-01-18 12:44:54',NULL,'pending','2025-01-18 12:44:54','2025-01-18 12:44:54'),(21,3,7,'2025-01-18 12:46:48',NULL,'pending','2025-01-18 12:46:48','2025-01-18 12:46:48'),(22,3,8,'2025-01-18 12:48:08',NULL,'accepted','2025-01-18 12:48:08','2025-01-18 15:05:37'),(23,3,8,'2025-01-18 12:48:24',NULL,'accepted','2025-01-18 12:48:24','2025-01-18 14:38:00'),(24,3,7,'2025-01-18 12:48:31',NULL,'pending','2025-01-18 12:48:31','2025-01-18 12:48:31'),(25,3,7,'2025-01-18 12:53:01',NULL,'rejected','2025-01-18 12:53:01','2025-01-18 14:48:05'),(26,3,8,'2025-01-18 12:53:11',NULL,'pending','2025-01-18 12:53:11','2025-01-18 12:53:11'),(27,3,8,'2025-01-18 12:57:10',NULL,'accepted','2025-01-18 12:57:10','2025-01-18 15:35:58'),(28,3,8,'2025-01-18 12:58:16',NULL,'rejected','2025-01-18 12:58:16','2025-01-18 14:38:26'),(29,3,8,'2025-01-18 13:06:17',NULL,'accepted','2025-01-18 13:06:17','2025-01-18 14:35:42'),(30,3,8,'2025-01-18 13:07:06',NULL,'accepted','2025-01-18 13:07:06','2025-01-18 14:35:34'),(31,3,8,'2025-01-18 13:08:26',NULL,'rejected','2025-01-18 13:08:26','2025-01-18 14:35:23'),(32,3,8,'2025-01-18 13:14:30',NULL,'accepted','2025-01-18 13:14:30','2025-01-18 13:21:49'),(33,3,8,'2025-01-18 14:08:25',NULL,'accepted','2025-01-18 14:08:25','2025-01-18 14:08:30'),(34,3,8,'2025-01-18 14:40:53',NULL,'pending','2025-01-18 14:40:53','2025-01-18 14:40:53'),(35,3,7,'2025-01-18 14:41:03',NULL,'pending','2025-01-18 14:41:03','2025-01-18 14:41:03'),(36,3,7,'2025-01-18 15:04:37',NULL,'pending','2025-01-18 15:04:37','2025-01-18 15:04:37'),(37,3,8,'2025-01-18 15:05:10',NULL,'pending','2025-01-18 15:05:10','2025-01-18 15:05:10'),(38,3,8,'2025-01-18 15:37:21',NULL,'pending','2025-01-18 15:37:21','2025-01-18 15:37:21'),(39,3,8,'2025-01-18 15:38:06',NULL,'pending','2025-01-18 15:38:06','2025-01-18 15:38:06'),(40,3,8,'2025-01-18 15:43:11',NULL,'accepted','2025-01-18 15:43:11','2025-01-18 15:43:27');
 /*!40000 ALTER TABLE `interests` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -206,13 +207,15 @@ DROP TABLE IF EXISTS `notifications`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `notifications` (
   `id` int NOT NULL AUTO_INCREMENT,
-  `content` text NOT NULL,
-  `user_id` int DEFAULT NULL,
+  `user_id` int NOT NULL,
+  `type` enum('interest_request','interest_accepted','interest_rejected','message','event_update') NOT NULL,
+  `message` text NOT NULL,
+  `related_entity_id` int DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
-  CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -221,6 +224,7 @@ CREATE TABLE `notifications` (
 
 LOCK TABLES `notifications` WRITE;
 /*!40000 ALTER TABLE `notifications` DISABLE KEYS */;
+INSERT INTO `notifications` VALUES (9,6,'interest_accepted','Votre demande a été acceptée ! Vous pouvez contacter le proposeur.',3,'2025-01-18 10:37:14'),(10,6,'interest_accepted','Votre demande pour \"Nettoyage de printemps\" a été acceptée 🎉.',1,'2025-01-18 10:37:14'),(48,7,'interest_rejected','❌ Marie Martin, Nettoyage de printemps a été refusée par 5.',3,'2025-01-18 14:48:05'),(50,5,'interest_request','Marie Martin est intéressé(e) par votre offre : Nettoyage de printemps',36,'2025-01-18 15:04:37'),(51,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',37,'2025-01-18 15:05:10'),(53,8,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr 📞 3630',3,'2025-01-18 15:31:34'),(54,8,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr',3,'2025-01-18 15:35:58'),(55,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',38,'2025-01-18 15:37:21'),(56,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',39,'2025-01-18 15:38:06'),(57,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',40,'2025-01-18 15:43:11'),(58,8,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr',3,'2025-01-18 15:43:27');
 /*!40000 ALTER TABLE `notifications` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -305,7 +309,7 @@ CREATE TABLE `propositions` (
   KEY `proposer_id` (`proposer_id`),
   CONSTRAINT `propositions_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`),
   CONSTRAINT `propositions_ibfk_2` FOREIGN KEY (`proposer_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -314,7 +318,7 @@ CREATE TABLE `propositions` (
 
 LOCK TABLES `propositions` WRITE;
 /*!40000 ALTER TABLE `propositions` DISABLE KEYS */;
-INSERT INTO `propositions` VALUES (2,2,5,'Réparer vos chauffages ','Je peux réparer les chauffages aux personnes démunies',1,'2025-01-16 12:24:43','2025-01-16 12:24:43');
+INSERT INTO `propositions` VALUES (2,2,5,'Réparer vos chauffages ','Je peux réparer les chauffages aux personnes démunies',1,'2025-01-16 12:24:43','2025-01-16 12:24:43'),(3,1,5,'Nettoyage de printemps','Je propose un service de nettoyage pour votre maison.',1,'2025-01-17 17:12:46','2025-01-17 17:12:46');
 /*!40000 ALTER TABLE `propositions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -423,4 +427,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-16 13:32:26
+-- Dump completed on 2025-01-18 16:35:23
