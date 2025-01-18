@@ -641,7 +641,7 @@ app.post('/interests', (req, res) => {
         return res.status(400).json({ error: "Proposition ID et utilisateur intéressé sont requis." });
     }
 
-    // Enregistrer la demande d’intérêt
+    // Enregistrer la demande d’intérêt dans la BDD
     const insertInterestSQL = `
         INSERT INTO interests (proposition_id, interested_user_id, start_date, status) 
         VALUES (?, ?, NOW(), 'pending')
@@ -649,51 +649,58 @@ app.post('/interests', (req, res) => {
 
     con.query(insertInterestSQL, [proposition_id, interested_user_id], (err, result) => {
         if (err) {
-            console.error("Erreur lors de l'insertion de l'intérêt :", err);
+            console.error("❌ Erreur lors de l'insertion de l'intérêt :", err);
             return res.status(500).json({ error: "Erreur interne du serveur" });
         }
 
-        // Récupérer l'ID du proposeur et le titre de la proposition pour la notification
+        // Récupérer l'ID du proposeur et le titre de la proposition
         const getProposerSQL = `
-            SELECT proposer_id, title FROM propositions WHERE id = ?
+            SELECT p.proposer_id, p.title, u.name AS interested_user_name
+            FROM propositions p
+            JOIN users u ON u.id = ?
+            WHERE p.id = ?
         `;
 
-        con.query(getProposerSQL, [proposition_id], (err, propositionResult) => {
+        con.query(getProposerSQL, [interested_user_id, proposition_id], (err, propositionResult) => {
             if (err) {
-                console.error("Erreur lors de la récupération de la proposition :", err);
+                console.error("❌ Erreur lors de la récupération de la proposition :", err);
                 return res.status(500).json({ error: "Erreur interne du serveur" });
             }
 
             if (propositionResult.length > 0) {
                 const proposer_id = propositionResult[0].proposer_id;
                 const title = propositionResult[0].title;
+                const interestedUserName = propositionResult[0].interested_user_name; // Récupération du nom de l'utilisateur intéressé
 
-                // Enregistrer la notification dans la base de données
+                // Construire le message de notification
+                const notifMessage = `${interestedUserName} est intéressé(e) par votre offre : ${title}`;
+
+                // Enregistrer la notification en base de données
                 const insertNotifSQL = `
                     INSERT INTO notifications (user_id, type, message, related_entity_id) 
                     VALUES (?, ?, ?, ?)
                 `;
 
-                con.query(insertNotifSQL, [proposer_id, "interest_request", `Un utilisateur est intéressé par votre offre : ${title}`, proposition_id], (err, notifResult) => {
+                con.query(insertNotifSQL, [proposer_id, "interest_request", notifMessage, proposition_id], (err, notifResult) => {
                     if (err) {
-                        console.error("Erreur lors de l'insertion de la notification :", err);
+                        console.error("❌ Erreur lors de l'insertion de la notification :", err);
                         return res.status(500).json({ error: "Erreur interne du serveur" });
                     }
 
                     // Envoyer la notification en temps réel via WebSocket
                     const io = req.app.get("socketio");
                     console.log("📡 Emission WebSocket : notification envoyée à", proposer_id);
-                    io.emit(`notification-${proposer_id}`, { message: `Un utilisateur est intéressé par votre offre : ${title}` });
+                    io.emit(`notification-${proposer_id}`, { message: notifMessage, related_entity_id: proposition_id });
+
                     console.log("✅ WebSocket émis !");
                     res.status(201).json({ message: "Demande d'intérêt envoyée avec succès." });
                 });
             } else {
-                res.status(404).json({ error: "Proposition non trouvée." });
+                res.status(404).json({ error: "Proposition ou utilisateur intéressé non trouvé." });
             }
         });
     });
 });
-
 // modifier un intérêt existant par son ID.
 //Envoie une notification en temps réel à l’intéressé quand sa demande est acceptée ou refusée.
 //utiliser con au lieu de db
