@@ -134,6 +134,20 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+// Pour valider une image à partir de son URL
+app.get('/api/validate-image', async (req, res) => {
+    const { url } = req.query;
+
+    try {
+        const response = await fetch(url, { method: 'HEAD' }); // Vérifie l'image
+        if (!response.ok) throw new Error('Invalid image');
+        res.status(200).json({ valid: true });
+    } catch (error) {
+        res.status(400).json({ valid: false, error: 'Invalid image URL' });
+    }
+});
+
+
 // Route for creating an event
 app.post('/api/events', (req, res) => {
     const { title, description, date, category, imageURL, address, city_id, creator_id } = req.body;
@@ -185,6 +199,27 @@ app.put('/api/events/:id', (req, res) => {
         res.status(200).json({ message: 'Événement modifié avec succès.' });
     });
 });
+
+
+// Route pour récupérer les détails d'un événement par son ID
+app.get('/api/events/:id', (req, res) => {
+    const eventId = req.params.id;
+
+    const sql = 'SELECT * FROM events WHERE id = ?';
+    con.query(sql, [eventId], (err, results) => {
+        if (err) {
+            console.error('Erreur SQL :', err);
+            return res.status(500).json({ error: 'Erreur lors de la récupération de l\'événement.' });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Événement introuvable.' });
+        }
+
+        res.status(200).json(results[0]); // Retourne les détails de l'événement
+    });
+});
+
 
 // Route pour supprimer un événement
 app.delete('/api/events/:id', (req, res) => {
