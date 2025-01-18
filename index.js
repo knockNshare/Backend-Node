@@ -1,17 +1,57 @@
-require('dotenv').config({ path: './.env' }); //dotenv permet de charger les variables d’environnement
+require('dotenv').config({ path: './.env' }); 
 const cors = require('cors');
-
-
-const mysql = require('mysql2'); //mettre mysql au lieu de mysql2
+const mysql = require('mysql2'); 
 const express = require('express');
 const bodyParser = require('body-parser');
-require('dotenv').config(); // This will load the variables from the .env file
+require('dotenv').config();
+const http = require("http");
+const socketIo = require("socket.io");
 
 // Initialiser l'application Express
 const app = express();
-const PORT = process.env.PORT || 3000; // Utilisation de la variable d'environnement ou port par défaut
 
-app.use(cors()); // Permet la requete frontend
+// Configuration socket.io pour les notifications en temps réel
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "*", 
+    methods: ["GET", "POST"],
+  },
+});
+
+app.use(cors()); 
+app.use(express.json());
+
+app.set("socketio", io); 
+
+io.on("connection", (socket) => {
+    const userId = socket.handshake.query.userId;
+
+    if (!userId|| userId === "undefined") {
+        console.warn("⚠️ Connexion WebSocket rejetée : userId est vide !");
+        socket.disconnect();
+        return;
+    }
+
+    console.log(`🟢 Connexion WebSocket - Utilisateur ${userId} (Socket ID: ${socket.id})`);
+
+    // Associer userId à un canal spécifique
+    socket.join(`user_${userId}`);
+
+    socket.on("disconnect", () => {
+        console.log(`🔴 Déconnexion - Utilisateur ${userId} (Socket ID: ${socket.id})`);
+    });
+});
+
+// Lancer le serveur WebSocket
+server.listen(5001, () => {
+    console.log("✅ Serveur WebSocket démarré sur le port 5001");
+});
+
+// Lancer l'API principale sur le port 3000
+const PORT = process.env.PORT || 3000;
+
+
 
 // Middleware
 app.use(bodyParser.json()); // Parse JSON request bodies
@@ -339,6 +379,9 @@ app.delete('/api/events/leave', (req, res) => {
         });
     });
 });
+
+//--------------------FIN_EVENTS---------------------
+
 // Route to search propositions based on service type, interest status, and position
 app.get('/api/propositions/search', (req, res) => {
     const { service_type, user_id } = req.query;
@@ -395,7 +438,7 @@ app.get('/api/propositions/search', (req, res) => {
             if (results.length === 0) {
                 return res.status(404).json({ error: 'Aucune proposition trouvée avec les critères spécifiés' });
             }
-
+            console.log("🟢 Résultats trouvés :", results);
             // Return the matching propositions
             res.status(200).json(results);
         });
@@ -403,6 +446,8 @@ app.get('/api/propositions/search', (req, res) => {
 
     
 });
+
+//--------------------CATEGORIES---------------------
 
 app.get('/api/categories', (req, res) => {
     const sql = 'SELECT id, service_type FROM categories';
@@ -444,6 +489,8 @@ app.delete("/categories/:id", (req, res) => {
         });
     });
 });
+
+//--------------------PROPOSITIONS---------------------
 
 //Ajouter une proposition
 app.post("/propositions", (req, res) => {
@@ -692,129 +739,120 @@ app.get('/api/propositions/searchText', async (req, res) => {
 });
 
 
-// ajouter un nouvel intérêt.
-app.post("/interests", (req, res) => {
-    const { proposition_id, interested_user_id, start_date, end_date } = req.body;
+//--------------------INTERETS---------------------
 
-    // Vérification des champs requis
-    if (!proposition_id || !interested_user_id || !start_date) {
-        return res.status(400).json({
-            error: "Missing required fields: proposition_id, interested_user_id, and start_date are required."
-        });
+// Ajouter un nouvel intérêt.
+// Envoie une notification au proposeur en temps réel lorsqu’une demande est faite.
+app.post('/interests', (req, res) => {
+    const { proposition_id, interested_user_id } = req.body;
+
+    // Vérifier les paramètres requis
+    if (!proposition_id || !interested_user_id) {
+        return res.status(400).json({ error: "Proposition ID et utilisateur intéressé sont requis." });
     }
 
-    // Vérifie que les clés étrangères existent
-    const checkQuery = `
-        SELECT
-                (SELECT COUNT(*) FROM propositions WHERE id = ?) AS proposition_exists,
-                (SELECT COUNT(*) FROM users WHERE id = ?) AS user_exists
+    // Enregistrer la demande d’intérêt
+    const insertInterestSQL = `
+        INSERT INTO interests (proposition_id, interested_user_id, start_date, status) 
+        VALUES (?, ?, NOW(), 'pending')
     `;
 
-    con.query(checkQuery, [proposition_id, interested_user_id], (err, results) => {
+    con.query(insertInterestSQL, [proposition_id, interested_user_id], (err, result) => {
         if (err) {
-            console.error("Error checking foreign keys:", err);
-            return res.status(500).json({
-                error: "An error occurred while validating foreign keys."
-            });
+            console.error("Erreur lors de l'insertion de l'intérêt :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur" });
         }
 
-        const { proposition_exists, user_exists } = results[0];
-
-        // Vérifie si les clés étrangères existent
-        if (!proposition_exists || !user_exists) {
-            return res.status(400).json({
-                error: "Invalid foreign keys: proposition_id or interested_user_id does not exist."
-            });
-        }
-
-        // Si tout est valide, insère l'intérêt
-        const query = `
-            INSERT INTO interests (proposition_id, interested_user_id, start_date, end_date, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
+        // Récupérer l'ID du proposeur et le titre de la proposition pour la notification
+        const getProposerSQL = `
+            SELECT proposer_id, title FROM propositions WHERE id = ?
         `;
 
-        con.query(query, [proposition_id, interested_user_id, start_date, end_date || null], (err, results) => {
+        con.query(getProposerSQL, [proposition_id], (err, propositionResult) => {
             if (err) {
-                console.error("SQL Error:", err);
-                return res.status(500).json({
-                    error: "An error occurred while adding the interest."
-                });
+                console.error("Erreur lors de la récupération de la proposition :", err);
+                return res.status(500).json({ error: "Erreur interne du serveur" });
             }
 
-            res.status(201).json({
-                message: "Interest successfully created",
-                data: {
-                    id: results.insertId,
-                    proposition_id,
-                    interested_user_id,
-                    start_date,
-                    end_date,
-                    status: "pending",
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }
-            });
+            if (propositionResult.length > 0) {
+                const proposer_id = propositionResult[0].proposer_id;
+                const title = propositionResult[0].title;
+
+                // Enregistrer la notification dans la base de données
+                const insertNotifSQL = `
+                    INSERT INTO notifications (user_id, type, message, related_entity_id) 
+                    VALUES (?, ?, ?, ?)
+                `;
+
+                con.query(insertNotifSQL, [proposer_id, "interest_request", `Un utilisateur est intéressé par votre offre : ${title}`, proposition_id], (err, notifResult) => {
+                    if (err) {
+                        console.error("Erreur lors de l'insertion de la notification :", err);
+                        return res.status(500).json({ error: "Erreur interne du serveur" });
+                    }
+
+                    // Envoyer la notification en temps réel via WebSocket
+                    const io = req.app.get("socketio");
+                    console.log("📡 Emission WebSocket : notification envoyée à", proposer_id);
+                    io.emit(`notification-${proposer_id}`, { message: `Un utilisateur est intéressé par votre offre : ${title}` });
+                    console.log("✅ WebSocket émis !");
+                    res.status(201).json({ message: "Demande d'intérêt envoyée avec succès." });
+                });
+            } else {
+                res.status(404).json({ error: "Proposition non trouvée." });
+            }
         });
     });
 });
-
-
 
 // modifier un intérêt existant par son ID.
-app.put("/interests/:id", (req, res) => {
-    const interestId = req.params.id;
-    const { start_date, end_date, status } = req.body;
+//Envoie une notification en temps réel à l’intéressé quand sa demande est acceptée ou refusée.
+//utiliser con au lieu de db
+app.put('/interests/:id', (req, res) => {
+    const { status } = req.body;
+    const { id } = req.params;
 
-    if (!start_date && !end_date && !status) {
-        return res.status(400).json({
-            error: "No fields provided to update."
-        });
+    if (!["accepted", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Statut invalide." });
     }
 
-    let fields = [];
-    let values = [];
-    if (start_date) {
-        fields.push("start_date = ?");
-        values.push(start_date);
-    }
-    if (end_date) {
-        fields.push("end_date = ?");
-        values.push(end_date);
-    }
-    if (status) {
-        fields.push("status = ?");
-        values.push(status);
-    }
-
-    values.push(interestId);
-
-    const query = `
-        UPDATE interests
-        SET ${fields.join(", ")}, updated_at = NOW()
-        WHERE id = ?
-    `;
-
-    con.query(query, values, (err, results) => {
+    // Mettre à jour le statut de la demande
+    con.query("UPDATE interests SET status = ? WHERE id = ?", [status, id], (err, result) => {
         if (err) {
-            console.error("Error updating interest:", err);
-            return res.status(500).json({
-                error: "An error occurred while updating the interest."
-            });
+            console.error("Erreur SQL lors de la mise à jour de la demande :", err);
+            return res.status(500).json({ error: "Erreur serveur" });
         }
 
-        if (results.affectedRows === 0) {
-            return res.status(404).json({
-                error: "Interest not found."
-            });
-        }
+        // Récupérer les infos de la demande pour envoyer la notification
+        con.query("SELECT interested_user_id, proposition_id FROM interests WHERE id = ?", [id], (err, interestResults) => {
+            if (err || interestResults.length === 0) {
+                console.error("Erreur SQL lors de la récupération de la demande :", err);
+                return res.status(500).json({ error: "Erreur serveur" });
+            }
 
-        res.json({
-            message: "Interest successfully updated",
-            updatedFields: { start_date, end_date, status }
+            const interested_user_id = interestResults[0].interested_user_id;
+            const proposition_id = interestResults[0].proposition_id;
+
+            const message = status === "accepted"
+                ? "Votre demande a été acceptée ! Vous pouvez contacter le proposeur."
+                : "Votre demande a été refusée.";
+
+            // Enregistrer la notification
+            con.query("INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
+                [interested_user_id, `interest_${status}`, message, proposition_id], (err) => {
+                    if (err) {
+                        console.error("Erreur SQL lors de l'ajout de la notification :", err);
+                        return res.status(500).json({ error: "Erreur serveur" });
+                    }
+
+                    // Envoyer la notification en temps réel
+                    const io = req.app.get("socketio");
+                    io.emit(`notification-${interested_user_id}`, { message });
+
+                    res.json({ message: `Demande ${status} avec succès.` });
+            });
         });
     });
 });
-
 app.get("/interests/received/:id", (req, res) => {
     /*
     C’est ce que fait la route /interests/received/:id.
@@ -938,6 +976,8 @@ app.delete("/interests/users/:id", (req, res) => {
     });
 });
 
+//--------------------UTILISATEURS---------------------
+
 // Récupérer les coordonnées d'un utilisateur par ID
 app.get("/users/:id/contact", (req, res) => {
     const userId = req.params.id;
@@ -998,13 +1038,74 @@ app.get("/users", (req, res) => {
     });
 });
 
+//--------------------NOTIFS---------------------
+
+
+//  Créer une Notification (à appeler lorsqu’une demande d’intérêt est envoyée ou acceptée/refusée)
+app.post("/notifications", (req, res) => {
+    const { user_id, type, message, related_entity_id } = req.body;
+
+    if (!user_id || !type || !message) {
+        return res.status(400).json({ error: "Champs obligatoires manquants." });
+    }
+
+    const insertNotificationQuery = `
+        INSERT INTO notifications (user_id, type, message, related_entity_id, created_at)
+        VALUES (?, ?, ?, ?, NOW())
+    `;
+
+    con.query(insertNotificationQuery, [user_id, type, message, related_entity_id], (err, result) => {
+        if (err) return res.status(500).json({ error: "Erreur serveur lors de l'ajout de la notification." });
+
+        const notificationData = {
+            id: result.insertId,
+            user_id,
+            type,
+            message,
+            related_entity_id,
+        };
+
+        io.emit(`notification_${user_id}`, notificationData); // 🔥 Envoie la notif en temps réel
+        res.status(201).json({ message: "Notification envoyée avec succès.", notificationData });
+    });
+});
+
+// Récupérer les Notifications d’un Utilisateur
+//utiliser con au lieu de db
+app.get('/notifications/:user_id', (req, res) => {
+    const { user_id } = req.params;
+    con.query(
+        'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC',
+        [user_id],
+        (err, results) => {
+            if (err) {
+                console.error('Erreur SQL lors de la récupération des notifications:', err);
+                return res.status(500).json({ error: 'Erreur interne du serveur' });
+            }
+            res.json(results);
+        }
+    );
+});
+// Supprimer une Notification (facultatif)
+//utiliser con au lieu de db
+app.delete('/notifications/:id', (req, res) => {
+    const { id } = req.params;
+    con.query('DELETE FROM notifications WHERE id = ?', [id], (err) => {
+        if (err) {
+            console.error('Erreur SQL lors de la suppression de la notification:', err);
+            return res.status(500).json({ error: 'Erreur interne du serveur' });
+        }
+        res.json({ message: 'Notification supprimée.' });
+    });
+});
+
 
 
 
 // Démarrer le serveur
 if (require.main === module) {
     app.listen(PORT, () => {
-        console.log(`Serveur en écoute sur http://localhost:${PORT}`);
+        console.log(`🚀Serveur en écoute sur http://localhost:${PORT}`);
     });
 }
 
