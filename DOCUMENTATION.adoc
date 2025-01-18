@@ -1,0 +1,188 @@
+= Documentation v0.3 – Intégration des Notifications & Améliorations UX/UI
+v0.3, Janvier 2025
+:pdf-theme: default
+:pdf-fontsdir: GEMS_DIR/asciidoctor-pdf/data/fonts
+:pdf-page-size: A4
+:pdf-page-layout: portrait
+:pdf-scripts: scripts
+:toc:
+:toc-title: Sommaire
+
+== 🎯 Introduction
+
+La version v0.3 marque une avancée majeure pour l’application en intégrant un **système de notifications en temps réel**, une **gestion fluide des demandes d’intérêt**, et une **expérience utilisateur optimisée**.
+
+Cette documentation couvre :
+
+. Les nouvelles fonctionnalités développées.
+. Les **flux utilisateurs** pour chaque action clé.
+. Les **endpoints backend** utilisés.
+. L’**impact métier** et la valeur ajoutée des améliorations.
+. Un **diagramme de séquence UML** pour illustrer le workflow.
+
+---
+
+== 🚀 Fonctionnalités Ajoutées
+
+=== 📌 2.1 Système de Notifications en Temps Réel 🔔
+
+**Description**
+
+Le système de notifications permet aux utilisateurs de **recevoir des alertes instantanées** lorsqu’ils effectuent des actions importantes (**demande d’intérêt envoyée, acceptation/refus d’une demande**).
+
+**Flux Utilisateur**
+
+. Un utilisateur effectue une action (*ex : envoie une demande d’intérêt*).
+. Une notification est **générée en base de données** et **envoyée en temps réel via WebSockets**.
+. L’**icône 🔔 dans la navbar affiche un badge** avec le nombre de notifications non lues.
+. L’utilisateur peut ouvrir **le panneau de notifications** et voir les nouvelles alertes.
+. Les notifications peuvent être **supprimées individuellement** ou **toutes en même temps**.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **GET** | `/notifications/:userId` | Récupère toutes les notifications d’un utilisateur.
+| **POST** | `/notifications` | Crée une nouvelle notification.
+| **DELETE** | `/notifications/:notifId` | Supprime une notification spécifique.
+| **DELETE** | `/notifications/all/:userId` | Supprime toutes les notifications d’un utilisateur.
+|===
+
+---
+
+=== 📌 2.2 Workflow des Demandes d’Intérêt 📩
+
+**Description**
+
+Les utilisateurs peuvent maintenant :
+
+* **Envoyer une demande d’intérêt** pour une annonce.
+* **Recevoir une notification immédiate** lorsqu’une demande est reçue.
+* **Accepter ou refuser une demande** via l’interface.
+* **Notifier l’utilisateur intéressé** du statut de sa demande **en temps réel**.
+
+**Flux Utilisateur**
+
+. **L’utilisateur intéressé clique sur "Demander"**.
+. La demande est enregistrée en base (**POST /interests**).
+. Le proposeur reçoit une **notification** dans son espace “Mes Intérêts Reçus”.
+. **Il peut accepter ou refuser la demande**.
+. L’utilisateur intéressé est **notifié immédiatement** du résultat.
+. **Si accepté, les coordonnées du proposeur sont affichées**.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **POST** | `/interests` | Créer une demande d’intérêt.
+| **GET** | `/interests/received/:userId` | Récupérer les demandes reçues.
+| **GET** | `/interests/sent/:userId` | Récupérer les demandes envoyées.
+| **PUT** | `/interests/:id` | Accepter ou refuser une demande.
+|===
+
+---
+
+=== 📌 2.3 Page “Mes Demandes Envoyées” 📤
+
+**Description**
+
+Ajout d’une nouvelle section permettant aux utilisateurs de **suivre leurs demandes** et voir si elles sont **acceptées ou refusées**.
+
+**Flux Utilisateur**
+
+. L’utilisateur consulte **la section “Mes demandes envoyées”**.
+. Il voit **toutes ses demandes** avec leur statut actuel.
+. **Si la demande est acceptée**, il accède aux **coordonnées du proposeur**.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **GET** | `/interests/sent/:userId` | Retourne les demandes envoyées par l’utilisateur.
+| **PUT** | `/interests/:id` | Met à jour le statut d’une demande.
+|===
+
+---
+
+=== 📌 2.4 Améliorations UX/UI 🎨
+
+L’application a été **remaniée graphiquement** pour une **meilleure expérience utilisateur** :
+
+* ✅ **Nouvelle navbar fixe** avec **navigation fluide**.
+* ✅ **Popup de notifications stylée** avec **mise en forme propre**.
+* ✅ **Suppression du bleu flashy** et **adoption d’un design plus épuré**.
+* ✅ **Animations CSS** pour un rendu **plus dynamique**.
+* ✅ **Espacement et marges ajustés** pour **une meilleure lisibilité**.
+
+---
+
+== 📊 Impact Métier & Valeur Ajoutée
+
+|===
+| Fonctionnalité | Valeur Ajoutée
+| 🔔 Notifications en temps réel | Permet aux utilisateurs d’être informés instantanément des actions importantes.
+| 📩 Gestion des demandes d’intérêt | Simplifie l’interaction entre utilisateurs, rendant le processus plus intuitif.
+| 📤 Suivi des demandes envoyées | Apporte de la transparence sur l’état des interactions.
+| 🎨 Expérience utilisateur améliorée | Favorise l’adoption de la plateforme grâce à une interface plus intuitive et agréable.
+|===
+
+---
+
+== 🎨 Diagramme de Séquence UML
+
+Voici le diagramme détaillant le workflow des demandes d’intérêt avec notifications :
+
+:toc:
+:source-highlighter: rouge
+:icons: font
+:sectnums:
+:imagesdir: images
+:diagram-extension: svg
+:diagram-dir: diagrams
+[plantuml, notifications-sequence, svg]
+----
+@startuml
+participant "Utilisateur Intéressé (par l'annonce)" as UI
+participant "Frontend (React)" as FE
+participant "Backend API" as API
+participant "Base de Données" as DB
+participant "WebSockets" as WS
+participant "Proposeur (de l'annonce)" as P
+
+== 📩 1. L'utilisateur envoie une demande d’intérêt ==
+UI -> FE: Clique sur "Demander"
+FE -> API: **POST** /interests (proposition_id, interested_user_id)
+API -> DB: 🔍 Vérifie que la proposition existe
+DB --> API: ✅ OK
+API -> DB: 📝 Enregistre la demande avec statut **"pending"**
+DB --> API: ✅ OK (id_interet)
+API -> WS: 📡 **Émet une notification au proposeur**
+WS --> P: 🔔 "Nouvelle demande reçue"
+
+== 📥 2. Le proposeur consulte ses demandes ==
+P -> FE: Accède à "Mes Intérêts Reçus"
+FE -> API: **GET** /interests/received/:userId
+API -> DB: 🔍 Récupère toutes les demandes associées à l’utilisateur
+DB --> API: 📋 Renvoie les demandes (id, titre, utilisateur intéressé)
+API --> FE: 🖥️ Affiche la liste des demandes
+
+== ✅ 3A. Le proposeur **accepte** la demande ==
+P -> FE: Clique sur "**Accepter**"
+FE -> API: **PUT** /interests/:id (status: accepted)
+API -> DB: ✅ Met à jour le statut en **"accepted"**
+DB --> API: ✅ OK
+API -> WS: 📡 **Émet une notification avec le statut accepté**
+WS --> UI: 🔔 "**🎉 Votre demande a été acceptée ! Voici les contacts 📧📞**"
+
+== ❌ 3B. Le proposeur **refuse** la demande ==
+P -> FE: Clique sur "**Refuser**"
+FE -> API: **PUT** /interests/:id (status: rejected)
+API -> DB: ❌ Met à jour le statut en **"rejected"**
+DB --> API: ✅ OK
+API -> WS: 📡 **Émet une notification avec le statut refusé**
+WS --> UI: 🔔 "**❌ Votre demande a été refusée.**"
+@enduml
+----
+
+== ✅ Tests & Validation
+
+* **Notifications en temps réel** : Fonctionnent sans latence.
+* **Gestion des statuts (pending, accepted, rejected)** : Bien mise à jour en base.
+* **UI et UX fluides** : Interface réactive et intuitive.
