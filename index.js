@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 require('dotenv').config();
 const http = require("http");
 const socketIo = require("socket.io");
+const Fuse = require('fuse.js');
 
 // Initialiser l'application Express
 const app = express();
@@ -463,71 +464,6 @@ app.delete('/api/events/leave', (req, res) => {
 
 //--------------------FIN_EVENTS---------------------
 
-// Route to search propositions based on service type, interest status, and position
-app.get('/api/propositions/search', (req, res) => {
-    const { service_type, user_id } = req.query;
-
-    if (!service_type || !user_id) {
-        return res.status(400).json({ error: 'Service type and user_id are required' });
-    }
-
-    // Step 1: Get the user's city, latitude, and longitude
-    const getUserLocationSQL = `
-        SELECT u.city_id, c.latitude AS user_latitude, c.longitude AS user_longitude
-        FROM users u
-        JOIN cities c ON u.city_id = c.id
-        WHERE u.id = ?
-    `;
-
-    con.query(getUserLocationSQL, [user_id], (err, userResults) => {
-        if (err) {
-            console.error('Erreur SQL (get user location):', err);
-            return res.status(500).json({ error: 'Erreur serveur' });
-        }
-
-        if (userResults.length === 0) {
-            return res.status(404).json({ error: 'Utilisateur non trouvé' });
-        }
-
-        const userLatitude = userResults[0].user_latitude;
-        const userLongitude = userResults[0].user_longitude;
-
-        // Step 2: SQL query to get propositions based on service type and is_active status, including proposer city
-        let sql = `
-            SELECT p.*, 
-                   ( 6371 * acos( cos( radians(?) ) * cos( radians(c.latitude) ) * cos( radians(c.longitude) - radians(?) ) + sin( radians(?) ) * sin( radians(c.latitude) ) ) ) AS distance
-            FROM propositions p
-            JOIN categories cat ON p.category_id = cat.id
-            LEFT JOIN users u ON p.proposer_id = u.id  -- Join with users to get proposer location
-            LEFT JOIN cities c ON u.city_id = c.id  -- Join with cities to get the proposer's latitude and longitude
-            WHERE cat.service_type = ?
-            AND p.is_active = true
-        `;
-
-        // Add a condition to limit results to a certain distance (e.g., 50 km)
-        const distanceLimit = 50; // Limit distance to 50 km
-        sql += ` HAVING distance <= ?`;
-
-        // Step 3: Execute the query
-        con.query(sql, [userLatitude, userLongitude, userLatitude, service_type, distanceLimit], (err, results) => {
-            if (err) {
-                console.error('Erreur SQL (search propositions):', err);
-                return res.status(500).json({ error: 'Erreur serveur' });
-            }
-
-            // Step 4: Return results if propositions found, else return error
-            if (results.length === 0) {
-                return res.status(404).json({ error: 'Aucune proposition trouvée avec les critères spécifiés' });
-            }
-            console.log("🟢 Résultats trouvés :", results);
-            // Return the matching propositions
-            res.status(200).json(results);
-        });
-    });
-
-    
-});
-
 //--------------------CATEGORIES---------------------
 
 app.get('/api/categories', (req, res) => {
@@ -573,6 +509,88 @@ app.delete("/categories/:id", (req, res) => {
 
 //--------------------PROPOSITIONS---------------------
 
+app.get('/api/propositions/search', (req, res) => {
+    const { service_type, user_id, keyword } = req.query;
+
+    if (!user_id) {
+        return res.status(400).json({ error: 'Service type and user_id are required' });
+    }
+
+    // Step 1: Get the user's city, latitude, and longitude
+    const getUserLocationSQL = `
+        SELECT u.city_id, c.latitude AS user_latitude, c.longitude AS user_longitude
+        FROM users u
+        JOIN cities c ON u.city_id = c.id
+        WHERE u.id = ?
+    `;
+
+    con.query(getUserLocationSQL, [user_id], (err, userResults) => {
+        if (err) {
+            console.error('Erreur SQL (get user location):', err);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        if (userResults.length === 0) {
+            return res.status(404).json({ error: 'Utilisateur non trouvé' });
+        }
+
+        const userLatitude = userResults[0].user_latitude;
+        const userLongitude = userResults[0].user_longitude;
+
+        // Step 2: SQL query to get propositions based on service type, is_active status, and location
+        let sql = `
+            SELECT p.*, 
+                   ( 6371 * acos( cos( radians(?) ) * cos( radians(c.latitude) ) * cos( radians(c.longitude) - radians(?) ) + sin( radians(?) ) * sin( radians(c.latitude) ) ) ) AS distance
+            FROM propositions p
+            JOIN categories cat ON p.category_id = cat.id
+            LEFT JOIN users u ON p.proposer_id = u.id  -- Join with users to get proposer location
+            LEFT JOIN cities c ON u.city_id = c.id  -- Join with cities to get the proposer's latitude and longitude
+            WHERE cat.service_type = ?
+            AND p.is_active = true
+        `;
+
+        // Step 3: Initialize query parameters
+        const queryParams = [userLatitude, userLongitude, userLatitude, service_type];
+
+        // Step 4: Fetch all propositions
+        con.query(sql, queryParams, (err, results) => {
+            if (err) {
+                console.error('Erreur SQL (search propositions):', err);
+                return res.status(500).json({ error: 'Erreur serveur' });
+            }
+
+            // Step 5: Use Fuse.js for fuzzy searching on 'title' and 'description' if keyword is provided
+            if (keyword && keyword.trim() !== "") {
+                console.log("keywords are ", keyword);
+
+                // Define Fuse.js options for searching title and description fields
+                const fuseOptions = {
+                    keys: ['title', 'description'],  // The fields to search
+                    threshold: 0.4,  // Fuzzy search threshold (lower is more strict)
+                    includeScore: true
+                };
+
+                // Initialize Fuse.js with the fetched results
+                const fuse = new Fuse(results, fuseOptions);
+
+                // Perform the fuzzy search using the keyword
+                const fuzzyResults = fuse.search(keyword);
+
+                // Extract the matching results
+                const matchedPropositions = fuzzyResults.map(result => result.item);
+
+                console.log("🟢 Fuzzy matched results: ", matchedPropositions);
+
+                // Return the matched propositions
+                return res.status(200).json(matchedPropositions);
+            }
+
+            // If no keyword, return all results with location filtering
+            console.log("🟢 Résultats trouvés :", results);
+            res.status(200).json(results);
+        });
+    });
+});
 //Ajouter une proposition
 app.post("/propositions", (req, res) => {
     const { category_id, proposer_id, title, description } = req.body;
@@ -788,14 +806,14 @@ app.get("/categories/:id/propositions", (req, res) => {
 });
 
 
-const getPropositionsBySearch = async (searchTerm) => {
+const getPropositionsBySearch = async (keyword) => {
     const query = `
         SELECT *
         FROM propositions
         WHERE title LIKE ? OR description LIKE ?;
     `;
     try {
-        const [rows] = await con.promise().query(query, [`%${searchTerm}%`, `%${searchTerm}%`]);
+        const [rows] = await con.promise().query(query, [`%${keyword}%`, `%${keyword}%`]);
         return rows;
     } catch (error) {
         console.error('Error fetching propositions:', error);
@@ -804,14 +822,15 @@ const getPropositionsBySearch = async (searchTerm) => {
 };
 // Define route to search for propositions by title or description
 app.get('/api/propositions/searchText', async (req, res) => {
-    const searchTerm = req.query.search;  // Get search term from query parameter
+    const keyword = req.query.keyword;  // Get search term from query parameter
+    console.log("I entered searchby text :",keyword);
 
-    if (!searchTerm) {
+    if (!keyword) {
         return res.status(400).send("Search term is required");  // If no search term, return an error
     }
 
     try {
-        const propositions = await getPropositionsBySearch(searchTerm);  // Fetch propositions from DB
+        const propositions = await getPropositionsBySearch(keyword);  // Fetch propositions from DB
         res.json(propositions);  // Send the propositions as a JSON response
     } catch (error) {
         console.error('Error fetching propositions:', error);
