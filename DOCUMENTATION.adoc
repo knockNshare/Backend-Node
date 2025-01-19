@@ -1,4 +1,4 @@
-= Documentation v0.3 – Intégration des Notifications & Améliorations UX/UI
+= Documentation v0.3 – Gestion des demandes et les recherche optimisés
 v0.3, Janvier 2025
 :pdf-theme: default
 :pdf-fontsdir: GEMS_DIR/asciidoctor-pdf/data/fonts
@@ -116,7 +116,7 @@ Cette fonctionnalité permet aux utilisateurs de rechercher des propositions en 
 2. Le système effectue une recherche floue sur les titres et descriptions des propositions.
 3. Le système filtre les propositions par catégorie sélectionnée.
 4. Le système calcule la distance géographique entre l'utilisateur et les propositions.
-5. Les résultats sont affichés, triés par pertinence et proximité géographique.
+5. Les résultats sont affichés, triés par proximité géographique.
 
 **Endpoints Backend**
 |===
@@ -148,6 +148,65 @@ API -> DB: 🔍 Calcule la distance entre l'utilisateur et chaque proposition
 DB --> API: 📋 Liste des propositions avec distances
 API -> FE: 🖥️ Affiche les résultats avec distance et pertinence
 FE --> User: Montre les propositions filtrées
+
+@enduml
+----
+
+=== 📌 2.3 Recherche Avancée des Événements
+
+**Description**
+
+Cette fonctionnalité permet aux utilisateurs de rechercher des événements en fonction de plusieurs critères : mots-clés, catégorie et ville. Grâce à la bibliothèque **Fuse.js**, la recherche est floue et permet de retrouver des événements qui correspondent partiellement aux mots-clés recherchés, même en cas d'erreur de frappe.
+
+Le processus de recherche est optimisé pour une expérience utilisateur fluide :
+
+1. L'utilisateur saisit un mot-clé (et optionnellement, sélectionne une catégorie ou une ville).
+2. Le système filtre les événements en fonction de la catégorie et de la ville sélectionnées.
+3. La recherche floue est effectuée sur les titres et descriptions des événements en utilisant Fuse.js, avec un seuil de pertinence réglable pour affiner les résultats.
+4. Les résultats sont retournés et triés par pertinence.
+
+**Flux Utilisateur**
+
+1. L'utilisateur entre un mot-clé de recherche et, si souhaité, sélectionne une catégorie et/ou une ville.
+2. La recherche floue est effectuée dans les titres et descriptions des événements.
+3. Les événements sont filtrés en fonction de la catégorie et de la ville, si spécifiés.
+4. Les résultats de recherche sont retournés, affichés par pertinence.
+5. L'utilisateur peut cliquer sur un événement pour consulter son détail.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **GET** | `api/events/search` | Recherche des événements en fonction des mots-clés, catégorie et ville.
+| **GET** | `api/events/:id` | Récupère les détails d’un événement spécifique.
+|===
+
+**Diagramme de Séquence : Recherche Avancée des Événements**
+[plantuml, recherche-avancee-sequence, svg]
+----
+@startuml
+actor "Utilisateur" as User
+participant "Frontend (React)" as FE
+participant "Backend API" as API
+participant "Base de Données" as DB
+participant "Fuse.js" as Fuse
+
+== 1. L'utilisateur effectue une recherche ==
+User -> FE: Saisit un mot-clé et sélectionne une catégorie ou une ville
+FE -> API: **GET** api//events/search (mot-clé, catégorie, ville)
+API -> DB: 🔍 Récupère tous les événements en fonction de la catégorie et de la ville
+DB --> API: 📋 Liste des événements filtrés
+API -> Fuse: Recherche floue sur 'title' et 'description'
+Fuse --> API: 📋 Liste des événements correspondant aux mots-clés
+API -> FE: 🖥️ Affiche les résultats de la recherche
+FE --> User: Montre les événements filtrés par pertinence
+
+== 2. L'utilisateur consulte un événement ==
+User -> FE: Clique sur un événement
+FE -> API: **GET** api/events/:id
+API -> DB: 🔍 Récupère les détails de l’événement avec l’ID
+DB --> API: 📋 Détails de l’événement
+API -> FE: 🖥️ Affiche les détails de l’événement
+FE --> User: Montre les détails de l’événement
 
 @enduml
 ----
@@ -219,6 +278,7 @@ L’application a été **remaniée graphiquement** pour une **meilleure expéri
 | 📩 Gestion des demandes d’intérêt | Simplifie l’interaction entre utilisateurs, rendant le processus plus intuitif.
 | 📤 Suivi des demandes envoyées | Apporte de la transparence sur l’état des interactions.
 | 🎨 Expérience utilisateur améliorée | Favorise l’adoption de la plateforme grâce à une interface plus intuitive et agréable.
+| 🧐 Recherche avancée des événements | Permet une recherche rapide et précise des événements grâce à la recherche floue, même avec des erreurs typographiques.
 |===
 
 == ✅ Tests & Validation
