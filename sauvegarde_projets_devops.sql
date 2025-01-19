@@ -116,7 +116,7 @@ CREATE TABLE `events` (
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `category` varchar(255) NOT NULL,
-  `imageURL` varchar(255) DEFAULT NULL,
+  `imageURL` varchar(255) DEFAULT '',
   PRIMARY KEY (`id`),
   KEY `creator_id` (`creator_id`),
   KEY `city_id` (`city_id`),
@@ -136,9 +136,9 @@ LOCK TABLES `events` WRITE;
 -- Updated INSERT statements
 INSERT INTO `events` (id, title, description, date, address, city_id, creator_id, created_at, updated_at, category, imageURL) 
 VALUES 
-(1, 'brocante', 'brocante', '2025-01-16 12:42:00', '14 Rue Chaillon',13001, 1, '2025-01-16 12:42:32', '2025-01-16 12:42:32', 'Réunion', NULL),
-(2, 'brocante', 'bc', '2025-01-16 13:20:00', '14 Rue Chaillon', 69001, 2, '2025-01-16 13:20:43', '2025-01-16 13:20:43', 'Réunion', NULL),
-(3, 'test', 'test', '2025-01-16 13:26:00', 'test', 75001, 3, '2025-01-16 13:26:31', '2025-01-16 13:26:31', 'Réunion', NULL);
+(1,'brocante','brocante','2025-01-16 12:42:00','14 Rue Chaillon',13001,1,'2025-01-16 12:42:32','2025-01-19 17:03:41','Réunion',''),
+(2,'brocante','bc','2025-01-16 13:20:00','14 Rue Chaillon',69001,2,'2025-01-16 13:20:43','2025-01-19 17:03:41','Réunion',''),
+(10,'TEST','TEST','2012-12-15 12:12:00','15 place de Paris',75001,1,'2025-01-19 15:26:11','2025-01-19 16:51:41','Fête','https://us-en-vexin.fr/wp-content/uploads/2020/03/brocante.jpg');
 
 /*!40000 ALTER TABLE `events` ENABLE KEYS */;
 
