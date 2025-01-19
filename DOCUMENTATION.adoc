@@ -210,6 +210,61 @@ FE --> User: Montre les détails de l’événement
 
 @enduml
 ----
+=== 📌 2.4 Modification et Suppression des Événements
+
+**Description**
+
+Les utilisateurs peuvent désormais **modifier** ou **supprimer** leurs événements à partir de l’interface. Cela permet une gestion complète des événements, incluant l'actualisation ou la suppression de données obsolètes.
+
+**Flux Utilisateur**
+
+1. **Modification**
+   - L’utilisateur ouvre les détails de son événement.
+   - Il clique sur le bouton "**Modifier**".
+   - Un formulaire pré-rempli s’affiche avec les informations actuelles.
+   - Après modification, il clique sur "**Enregistrer**" pour sauvegarder les modifications.
+
+2. **Suppression**
+   - L’utilisateur ouvre les détails de son événement.
+   - Il clique sur le bouton "**Supprimer**".
+   - Une confirmation s’affiche avant suppression définitive.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **PUT** | `/api/events/:id` | Met à jour un événement existant.
+| **DELETE** | `/api/events/:id` | Supprime un événement spécifique.
+|===
+
+**Diagramme de Séquence : Modification et Suppression des Événements**
+[plantuml, modification-suppression-evenements, svg]
+----
+@startuml
+actor "Utilisateur" as User
+participant "Frontend (React)" as FE
+participant "Backend API" as API
+participant "Base de Données" as DB
+
+== 1. Modification ==
+User -> FE: Ouvre les détails de l'événement
+FE -> API: **GET** /api/events/:id
+API -> DB: Récupère les données de l'événement
+DB --> API: Renvoie les données de l'événement
+API --> FE: Affiche les détails
+User -> FE: Clique sur "Modifier" et enregistre les modifications
+FE -> API: **PUT** /api/events/:id (modifications)
+API -> DB: Met à jour l'événement
+DB --> API: Confirme la mise à jour
+API --> FE: Notifie le succès de la modification
+
+== 2. Suppression ==
+User -> FE: Clique sur "Supprimer"
+FE -> API: **DELETE** /api/events/:id
+API -> DB: Supprime l'événement
+DB --> API: Confirme la suppression
+API --> FE: Notifie le succès de la suppression
+@enduml
+----
 
 ---
 
@@ -259,7 +314,75 @@ Les notifications sont envoyées en temps réel à l’utilisateur lorsqu’une 
 
 ---
 
-=== 📌 2.3 Améliorations UX/UI 🎨
+=== 📌 2.3 Détails d’un Événement
+
+**Description**
+
+Les utilisateurs peuvent désormais visualiser les détails d’un événement. Cette page affiche les informations complètes de l’événement sélectionné, comme son titre, sa description, sa date, son lieu, sa catégorie, et son image associée.
+
+**Flux Utilisateur**
+
+1. L’utilisateur clique sur un événement dans la liste des événements.
+2. Une fenêtre modale s’affiche, contenant les détails complets de l’événement.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **GET** | `/api/events/:id` | Récupère les détails d’un événement spécifique.
+|===
+
+---
+
+=== 📌 2.4 Gestion des Images des Événements (Frontend)
+
+**Description**
+
+La prise en charge des images d’événements a été ajoutée dans :
+- Le formulaire de création et de modification des événements.
+- La page de détails des événements.
+
+Les utilisateurs peuvent visualiser une image par défaut (si aucune image n’est fournie) ou une image personnalisée associée à l’événement.
+
+**Flux Utilisateur**
+
+1. Lors de la création ou modification d’un événement, l’utilisateur peut spécifier l’URL d’une image.
+2. Si l’utilisateur ne renseigne pas d’image, une image par défaut est utilisée.
+3. La page de détails affiche l’image associée à l’événement.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **GET** | `/api/events/:id` | Récupère les détails de l’événement, y compris l’URL de l’image.
+| **POST** | `/api/events` | Permet de créer un événement avec une image associée.
+| **PUT** | `/api/events/:id` | Permet de modifier l’image associée à un événement.
+| **GET** |`/api/validate-image` | Permet de vérifier si une URL d’image est valide.
+|===
+
+---
+
+=== 📌 2.5 Filtre par Villes
+
+**Description**
+
+Un filtre par villes a été ajouté pour permettre aux utilisateurs de rechercher des événements en fonction de leur localisation.
+
+**Flux Utilisateur**
+
+1. L’utilisateur sélectionne une ville dans la liste déroulante des filtres.
+2. Les événements affichés sont automatiquement filtrés pour correspondre à la ville sélectionnée.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **GET** | `/cities` | Récupère les villes disponibles pour les événements.
+|===
+
+**Note :** Les filtres sont appliqués côté frontend en combinant les critères de recherche pour offrir une expérience utilisateur optimale.
+
+---
+
+
+=== 📌 2.6 Améliorations UX/UI 🎨
 
 L’application a été **remaniée graphiquement** pour une **meilleure expérience utilisateur** :
 

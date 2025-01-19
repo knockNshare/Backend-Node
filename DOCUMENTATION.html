@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.23">
 <meta name="author" content="v0.3, Janvier 2025">
-<title>Documentation v0.3 – Intégration des Notifications &amp; Améliorations UX/UI</title>
+<title>Documentation v0.3 – Gestion des demandes et les recherche optimisés</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /*! Asciidoctor default stylesheet | MIT License | https://asciidoctor.org */
@@ -437,7 +437,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </head>
 <body class="article">
 <div id="header">
-<h1>Documentation v0.3 – Intégration des Notifications &amp; Améliorations UX/UI</h1>
+<h1>Documentation v0.3 – Gestion des demandes et les recherche optimisés</h1>
 <div class="details">
 <span id="author" class="author">v0.3, Janvier 2025</span><br>
 </div>
@@ -445,17 +445,26 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="toctitle">Sommaire</div>
 <ul class="sectlevel1">
 <li><a href="#_introduction">🎯 Introduction</a></li>
-<li><a href="#_fonctionnalités_ajoutées">🚀 Fonctionnalités Ajoutées</a>
+<li><a href="#_grandes_fonctionnalités">🚀 Grandes Fonctionnalités</a>
 <ul class="sectlevel2">
-<li><a href="#_2_1_système_de_notifications_en_temps_réel">📌 2.1 Système de Notifications en Temps Réel 🔔</a></li>
-<li><a href="#_2_2_workflow_des_demandes_dintérêt">📌 2.2 Workflow des Demandes d’Intérêt 📩</a></li>
-<li><a href="#_2_3_page_mes_demandes_envoyées">📌 2.3 Page “Mes Demandes Envoyées” 📤</a></li>
-<li><a href="#_2_4_améliorations_uxui">📌 2.4 Améliorations UX/UI 🎨</a></li>
+<li><a href="#_2_1_gestion_des_demandes_dintérêt_notifications_en_temps_réel">📌 2.1 Gestion des Demandes d&#8217;Intérêt &amp; Notifications en Temps Réel</a></li>
+<li><a href="#_2_2_recherche_de_propositions">📌 2.2 Recherche de Propositions</a></li>
+<li><a href="#_2_3_recherche_avancée_des_événements">📌 2.3 Recherche Avancée des Événements</a></li>
+<li><a href="#_2_4_modification_et_suppression_des_événements">📌 2.4 Modification et Suppression des Événements</a></li>
+</ul>
+</li>
+<li><a href="#_petites_fonctionnalités">🚀 Petites Fonctionnalités</a>
+<ul class="sectlevel2">
+<li><a href="#_2_1_page_mes_demandes_envoyées">📌 2.1 Page “Mes Demandes Envoyées” 📤</a></li>
+<li><a href="#_2_2_notifications_en_temps_réel">📌 2.2 Notifications en Temps Réel 🔔</a></li>
+<li><a href="#_2_3_détails_dun_événement">📌 2.3 Détails d’un Événement</a></li>
+<li><a href="#_2_4_gestion_des_images_des_événements_frontend">📌 2.4 Gestion des Images des Événements (Frontend)</a></li>
+<li><a href="#_2_5_filtre_par_villes">📌 2.5 Filtre par Villes</a></li>
+<li><a href="#_2_6_améliorations_uxui">📌 2.6 Améliorations UX/UI 🎨</a></li>
 </ul>
 </li>
 <li><a href="#_impact_métier_valeur_ajoutée">📊 Impact Métier &amp; Valeur Ajoutée</a></li>
-<li><a href="#_diagramme_de_séquence_uml">🎨 Diagramme de Séquence UML</a></li>
-<li><a href="#_tests_validation">1. ✅ Tests &amp; Validation</a></li>
+<li><a href="#_tests_validation">✅ Tests &amp; Validation</a></li>
 </ul>
 </div>
 </div>
@@ -467,91 +476,89 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <p>La version v0.3 marque une avancée majeure pour l’application en intégrant un <strong>système de notifications en temps réel</strong>, une <strong>gestion fluide des demandes d’intérêt</strong>, et une <strong>expérience utilisateur optimisée</strong>.</p>
 </div>
 <div class="paragraph">
-<p>Cette documentation couvre :
-- Les nouvelles fonctionnalités développées.
-- Les <strong>flux utilisateurs</strong> pour chaque action clé.
-- Les <strong>endpoints backend</strong> utilisés.
-- L’<strong>impact métier</strong> et la valeur ajoutée des améliorations.
-- Un <strong>diagramme de séquence UML</strong> pour illustrer le workflow.</p>
+<p>Cette documentation couvre :</p>
 </div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Les nouvelles fonctionnalités développées.</p>
+</li>
+<li>
+<p>Les <strong>flux utilisateurs</strong> pour chaque action clé.</p>
+</li>
+<li>
+<p>Les <strong>endpoints backend</strong> utilisés.</p>
+</li>
+<li>
+<p>L’<strong>impact métier</strong> et la valeur ajoutée des améliorations.</p>
+</li>
+<li>
+<p>Un <strong>diagramme de séquence UML</strong> pour illustrer le workflow.</p>
+</li>
+</ol>
+</div>
+<hr>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_fonctionnalités_ajoutées">🚀 Fonctionnalités Ajoutées</h2>
+<h2 id="_grandes_fonctionnalités">🚀 Grandes Fonctionnalités</h2>
 <div class="sectionbody">
 <div class="sect2">
-<h3 id="_2_1_système_de_notifications_en_temps_réel">📌 2.1 Système de Notifications en Temps Réel 🔔</h3>
+<h3 id="_2_1_gestion_des_demandes_dintérêt_notifications_en_temps_réel">📌 2.1 Gestion des Demandes d&#8217;Intérêt &amp; Notifications en Temps Réel</h3>
 <div class="paragraph">
 <p><strong>Description</strong></p>
 </div>
 <div class="paragraph">
-<p>Le système de notifications permet aux utilisateurs de <strong>recevoir des alertes instantanées</strong> lorsqu’ils effectuent des actions importantes (<strong>demande d’intérêt envoyée, acceptation/refus d’une demande</strong>).</p>
+<p>Cette fonctionnalité regroupe tout le flux des demandes d&#8217;intérêt, y compris les notifications en temps réel. Les utilisateurs peuvent envoyer et recevoir des demandes d&#8217;intérêt, puis être notifiés de l&#8217;acceptation ou du refus de la demande en temps réel.</p>
 </div>
 <div class="paragraph">
-<p><strong>Flux Utilisateur</strong>
-. Un utilisateur effectue une action (<strong>ex : envoie une demande d’intérêt</strong>).
-. Une notification est <strong>générée en base de données</strong> et <strong>envoyée en temps réel via WebSockets</strong>.
-. L’<strong>icône 🔔 dans la navbar affiche un badge</strong> avec le nombre de notifications non lues.
-. L’utilisateur peut ouvrir <strong>le panneau de notifications</strong> et voir les nouvelles alertes.
-. Les notifications peuvent être <strong>supprimées individuellement</strong> ou <strong>toutes en même temps</strong>.</p>
+<p><strong>Flux Utilisateur</strong></p>
 </div>
-<div class="paragraph">
-<p><strong>Endpoints Backend</strong></p>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Envoi d&#8217;une Demande d&#8217;Intérêt</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p>L&#8217;utilisateur intéressé clique sur "Demander".</p>
+</li>
+<li>
+<p>La demande est enregistrée en base (via <strong>POST /interests</strong>).</p>
+</li>
+<li>
+<p>Une notification en temps réel est envoyée au proposeur.</p>
+</li>
+</ul>
 </div>
-<table class="tableblock frame-all grid-all stretch">
-<colgroup>
-<col style="width: 33.3333%;">
-<col style="width: 33.3333%;">
-<col style="width: 33.3334%;">
-</colgroup>
-<tbody>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Méthode</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Endpoint</p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>GET</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications/:userId</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Récupère toutes les notifications d’un utilisateur.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>POST</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Crée une nouvelle notification.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>DELETE</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications/:notifId</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Supprime une notification spécifique.</p></td>
-</tr>
-<tr>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>DELETE</strong></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications/all/:userId</code></p></td>
-<td class="tableblock halign-left valign-top"><p class="tableblock">Supprime toutes les notifications d’un utilisateur.</p></td>
-</tr>
-</tbody>
-</table>
-<hr>
+</li>
+<li>
+<p><strong>Consultation des Demandes d&#8217;Intérêt</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p>Le proposeur accède à "Mes Intérêts Reçus".</p>
+</li>
+<li>
+<p>Il voit la demande et peut l’accepter ou la refuser.</p>
+</li>
+</ul>
 </div>
-<div class="sect2">
-<h3 id="_2_2_workflow_des_demandes_dintérêt">📌 2.2 Workflow des Demandes d’Intérêt 📩</h3>
-<div class="paragraph">
-<p><strong>Description</strong>
-Les utilisateurs peuvent maintenant :
-- <strong>Envoyer une demande d’intérêt</strong> pour une annonce.
-- <strong>Recevoir une notification immédiate</strong> lorsqu’une demande est reçue.
-- <strong>Accepter ou refuser une demande</strong> via l’interface.
-- <strong>Notifier l’utilisateur intéressé</strong> du statut de sa demande <strong>en temps réel</strong>.</p>
+</li>
+<li>
+<p><strong>Notifications et Actions en Temps Réel</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p>Si la demande est acceptée, le demandeur est notifié avec les coordonnées du proposeur.</p>
+</li>
+<li>
+<p>Si la demande est refusée, le demandeur est informé de la décision.</p>
+</li>
+</ul>
 </div>
-<div class="paragraph">
-<p><strong>Flux Utilisateur</strong>
-. <strong>L’utilisateur intéressé clique sur "Demander"</strong>.
-. La demande est enregistrée en base (<strong>POST /interests</strong>).
-. Le proposeur reçoit une <strong>notification</strong> dans son espace “Mes Intérêts Reçus”.
-. <strong>Il peut accepter ou refuser la demande</strong>.
-. L’utilisateur intéressé est <strong>notifié immédiatement</strong> du résultat.
-. <strong>Si accepté, les coordonnées du proposeur sont affichées</strong>.</p>
+</li>
+</ol>
 </div>
 <div class="paragraph">
 <p><strong>Endpoints Backend</strong></p>
@@ -588,21 +595,299 @@ Les utilisateurs peuvent maintenant :
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>/interests/:id</code></p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Accepter ou refuser une demande.</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>GET</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications/:userId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Récupère toutes les notifications d’un utilisateur.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>POST</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Crée une nouvelle notification.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>DELETE</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications/:notifId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supprime une notification spécifique.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>DELETE</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications/all/:userId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supprime toutes les notifications d’un utilisateur.</p></td>
+</tr>
 </tbody>
 </table>
+<div class="paragraph">
+<p><strong>Diagramme de Séquence : Demande d&#8217;Intérêt et Notifications</strong></p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="demande-notification-sequence.svg" alt="demande notification sequence" width="1546" height="992">
+</div>
+</div>
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_2_3_page_mes_demandes_envoyées">📌 2.3 Page “Mes Demandes Envoyées” 📤</h3>
+<h3 id="_2_2_recherche_de_propositions">📌 2.2 Recherche de Propositions</h3>
 <div class="paragraph">
-<p><strong>Description</strong>
-Ajout d’une nouvelle section permettant aux utilisateurs de <strong>suivre leurs demandes</strong> et voir si elles sont <strong>acceptées ou refusées</strong>.</p>
+<p><strong>Description</strong></p>
 </div>
 <div class="paragraph">
-<p><strong>Flux Utilisateur</strong>
-. L’utilisateur consulte <strong>la section “Mes demandes envoyées”</strong>.
-. Il voit <strong>toutes ses demandes</strong> avec leur statut actuel.
-. <strong>Si la demande est acceptée</strong>, il accède aux <strong>coordonnées du proposeur</strong>.</p>
+<p>Cette fonctionnalité permet aux utilisateurs de rechercher des propositions en fonction de plusieurs critères : mots-clés, catégorie et distance géographique.</p>
+</div>
+<div class="paragraph">
+<p><strong>Flux Utilisateur</strong></p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>L&#8217;utilisateur entre des mots-clés et sélectionne une catégorie de service.</p>
+</li>
+<li>
+<p>Le système effectue une recherche floue sur les titres et descriptions des propositions.</p>
+</li>
+<li>
+<p>Le système filtre les propositions par catégorie sélectionnée.</p>
+</li>
+<li>
+<p>Le système calcule la distance géographique entre l&#8217;utilisateur et les propositions.</p>
+</li>
+<li>
+<p>Les résultats sont affichés, triés par proximité géographique.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><strong>Endpoints Backend</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Méthode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Endpoint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>GET</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/propositions/search</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Recherche des propositions en fonction des mots-clés, catégorie et distance.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>Diagramme de Séquence : Recherche de Propositions</strong></p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="recherche-sequence.svg" alt="recherche sequence" width="1630" height="574">
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_2_3_recherche_avancée_des_événements">📌 2.3 Recherche Avancée des Événements</h3>
+<div class="paragraph">
+<p><strong>Description</strong></p>
+</div>
+<div class="paragraph">
+<p>Cette fonctionnalité permet aux utilisateurs de rechercher des événements en fonction de plusieurs critères : mots-clés, catégorie et ville. Grâce à la bibliothèque <strong>Fuse.js</strong>, la recherche est floue et permet de retrouver des événements qui correspondent partiellement aux mots-clés recherchés, même en cas d&#8217;erreur de frappe.</p>
+</div>
+<div class="paragraph">
+<p>Le processus de recherche est optimisé pour une expérience utilisateur fluide :</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>L&#8217;utilisateur saisit un mot-clé (et optionnellement, sélectionne une catégorie ou une ville).</p>
+</li>
+<li>
+<p>Le système filtre les événements en fonction de la catégorie et de la ville sélectionnées.</p>
+</li>
+<li>
+<p>La recherche floue est effectuée sur les titres et descriptions des événements en utilisant Fuse.js, avec un seuil de pertinence réglable pour affiner les résultats.</p>
+</li>
+<li>
+<p>Les résultats sont retournés et triés par pertinence.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><strong>Flux Utilisateur</strong></p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>L&#8217;utilisateur entre un mot-clé de recherche et, si souhaité, sélectionne une catégorie et/ou une ville.</p>
+</li>
+<li>
+<p>La recherche floue est effectuée dans les titres et descriptions des événements.</p>
+</li>
+<li>
+<p>Les événements sont filtrés en fonction de la catégorie et de la ville, si spécifiés.</p>
+</li>
+<li>
+<p>Les résultats de recherche sont retournés, affichés par pertinence.</p>
+</li>
+<li>
+<p>L&#8217;utilisateur peut cliquer sur un événement pour consulter son détail.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><strong>Endpoints Backend</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Méthode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Endpoint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>GET</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>api/events/search</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Recherche des événements en fonction des mots-clés, catégorie et ville.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>GET</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>api/events/:id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Récupère les détails d’un événement spécifique.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>Diagramme de Séquence : Recherche Avancée des Événements</strong></p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="recherche-avancee-sequence.svg" alt="recherche avancee sequence" width="1291" height="698">
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_2_4_modification_et_suppression_des_événements">📌 2.4 Modification et Suppression des Événements</h3>
+<div class="paragraph">
+<p><strong>Description</strong></p>
+</div>
+<div class="paragraph">
+<p>Les utilisateurs peuvent désormais <strong>modifier</strong> ou <strong>supprimer</strong> leurs événements à partir de l’interface. Cela permet une gestion complète des événements, incluant l&#8217;actualisation ou la suppression de données obsolètes.</p>
+</div>
+<div class="paragraph">
+<p><strong>Flux Utilisateur</strong></p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><strong>Modification</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p>L’utilisateur ouvre les détails de son événement.</p>
+</li>
+<li>
+<p>Il clique sur le bouton "<strong>Modifier</strong>".</p>
+</li>
+<li>
+<p>Un formulaire pré-rempli s’affiche avec les informations actuelles.</p>
+</li>
+<li>
+<p>Après modification, il clique sur "<strong>Enregistrer</strong>" pour sauvegarder les modifications.</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p><strong>Suppression</strong></p>
+<div class="ulist">
+<ul>
+<li>
+<p>L’utilisateur ouvre les détails de son événement.</p>
+</li>
+<li>
+<p>Il clique sur le bouton "<strong>Supprimer</strong>".</p>
+</li>
+<li>
+<p>Une confirmation s’affiche avant suppression définitive.</p>
+</li>
+</ul>
+</div>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><strong>Endpoints Backend</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Méthode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Endpoint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>PUT</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/events/:id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Met à jour un événement existant.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>DELETE</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/events/:id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supprime un événement spécifique.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>Diagramme de Séquence : Modification et Suppression des Événements</strong></p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="modification-suppression-evenements.svg" alt="modification suppression evenements" width="900" height="728">
+</div>
+</div>
+<hr>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_petites_fonctionnalités">🚀 Petites Fonctionnalités</h2>
+<div class="sectionbody">
+<div class="sect2">
+<h3 id="_2_1_page_mes_demandes_envoyées">📌 2.1 Page “Mes Demandes Envoyées” 📤</h3>
+<div class="paragraph">
+<p><strong>Description</strong></p>
+</div>
+<div class="paragraph">
+<p>Ajout d’une nouvelle section permettant aux utilisateurs de <strong>suivre leurs demandes</strong> et voir si elles sont <strong>acceptées ou refusées</strong>.</p>
+</div>
+<div class="paragraph">
+<p><strong>Flux Utilisateur</strong></p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>L’utilisateur consulte <strong>la section “Mes demandes envoyées”</strong>.</p>
+</li>
+<li>
+<p>Il voit <strong>toutes ses demandes</strong> avec leur statut actuel.</p>
+</li>
+<li>
+<p><strong>Si la demande est acceptée</strong>, il accède aux <strong>coordonnées du proposeur</strong>.</p>
+</li>
+</ol>
 </div>
 <div class="paragraph">
 <p><strong>Endpoints Backend</strong></p>
@@ -634,7 +919,231 @@ Ajout d’une nouvelle section permettant aux utilisateurs de <strong>suivre leu
 <hr>
 </div>
 <div class="sect2">
-<h3 id="_2_4_améliorations_uxui">📌 2.4 Améliorations UX/UI 🎨</h3>
+<h3 id="_2_2_notifications_en_temps_réel">📌 2.2 Notifications en Temps Réel 🔔</h3>
+<div class="paragraph">
+<p><strong>Description</strong></p>
+</div>
+<div class="paragraph">
+<p>Les notifications sont envoyées en temps réel à l’utilisateur lorsqu’une action importante se produit (acceptation/refus d’une demande, etc.). Cela permet une interaction fluide et réactive avec l’application.</p>
+</div>
+<div class="paragraph">
+<p><strong>Flux Utilisateur</strong></p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>L’utilisateur effectue une action qui génère une notification.</p>
+</li>
+<li>
+<p>Une notification apparaît instantanément dans le panneau des notifications.</p>
+</li>
+<li>
+<p>L’utilisateur peut la consulter et la supprimer.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><strong>Endpoints Backend</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Méthode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Endpoint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>POST</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Crée une nouvelle notification.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>GET</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications/:userId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Récupère toutes les notifications d’un utilisateur.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>DELETE</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications/:notifId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supprime une notification spécifique.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>DELETE</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/notifications/all/:userId</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Supprime toutes les notifications d’un utilisateur.</p></td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_2_3_détails_dun_événement">📌 2.3 Détails d’un Événement</h3>
+<div class="paragraph">
+<p><strong>Description</strong></p>
+</div>
+<div class="paragraph">
+<p>Les utilisateurs peuvent désormais visualiser les détails d’un événement. Cette page affiche les informations complètes de l’événement sélectionné, comme son titre, sa description, sa date, son lieu, sa catégorie, et son image associée.</p>
+</div>
+<div class="paragraph">
+<p><strong>Flux Utilisateur</strong></p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>L’utilisateur clique sur un événement dans la liste des événements.</p>
+</li>
+<li>
+<p>Une fenêtre modale s’affiche, contenant les détails complets de l’événement.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><strong>Endpoints Backend</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Méthode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Endpoint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>GET</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/events/:id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Récupère les détails d’un événement spécifique.</p></td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_2_4_gestion_des_images_des_événements_frontend">📌 2.4 Gestion des Images des Événements (Frontend)</h3>
+<div class="paragraph">
+<p><strong>Description</strong></p>
+</div>
+<div class="paragraph">
+<p>La prise en charge des images d’événements a été ajoutée dans :
+- Le formulaire de création et de modification des événements.
+- La page de détails des événements.</p>
+</div>
+<div class="paragraph">
+<p>Les utilisateurs peuvent visualiser une image par défaut (si aucune image n’est fournie) ou une image personnalisée associée à l’événement.</p>
+</div>
+<div class="paragraph">
+<p><strong>Flux Utilisateur</strong></p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Lors de la création ou modification d’un événement, l’utilisateur peut spécifier l’URL d’une image.</p>
+</li>
+<li>
+<p>Si l’utilisateur ne renseigne pas d’image, une image par défaut est utilisée.</p>
+</li>
+<li>
+<p>La page de détails affiche l’image associée à l’événement.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><strong>Endpoints Backend</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Méthode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Endpoint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>GET</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/events/:id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Récupère les détails de l’événement, y compris l’URL de l’image.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>POST</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/events</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permet de créer un événement avec une image associée.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>PUT</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/events/:id</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permet de modifier l’image associée à un événement.</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>GET</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/api/validate-image</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permet de vérifier si une URL d’image est valide.</p></td>
+</tr>
+</tbody>
+</table>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_2_5_filtre_par_villes">📌 2.5 Filtre par Villes</h3>
+<div class="paragraph">
+<p><strong>Description</strong></p>
+</div>
+<div class="paragraph">
+<p>Un filtre par villes a été ajouté pour permettre aux utilisateurs de rechercher des événements en fonction de leur localisation.</p>
+</div>
+<div class="paragraph">
+<p><strong>Flux Utilisateur</strong></p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>L’utilisateur sélectionne une ville dans la liste déroulante des filtres.</p>
+</li>
+<li>
+<p>Les événements affichés sont automatiquement filtrés pour correspondre à la ville sélectionnée.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p><strong>Endpoints Backend</strong></p>
+</div>
+<table class="tableblock frame-all grid-all stretch">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Méthode</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Endpoint</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Description</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><strong>GET</strong></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>/cities</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Récupère les villes disponibles pour les événements.</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p><strong>Note :</strong> Les filtres sont appliqués côté frontend en combinant les critères de recherche pour offrir une expérience utilisateur optimale.</p>
+</div>
+<hr>
+</div>
+<div class="sect2">
+<h3 id="_2_6_améliorations_uxui">📌 2.6 Améliorations UX/UI 🎨</h3>
 <div class="paragraph">
 <p>L’application a été <strong>remaniée graphiquement</strong> pour une <strong>meilleure expérience utilisateur</strong> :</p>
 </div>
@@ -690,26 +1199,16 @@ Ajout d’une nouvelle section permettant aux utilisateurs de <strong>suivre leu
 <td class="tableblock halign-left valign-top"><p class="tableblock">🎨 Expérience utilisateur améliorée</p></td>
 <td class="tableblock halign-left valign-top"><p class="tableblock">Favorise l’adoption de la plateforme grâce à une interface plus intuitive et agréable.</p></td>
 </tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">🧐 Recherche avancée des événements</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Permet une recherche rapide et précise des événements grâce à la recherche floue, même avec des erreurs typographiques.</p></td>
+</tr>
 </tbody>
 </table>
-<hr>
 </div>
 </div>
 <div class="sect1">
-<h2 id="_diagramme_de_séquence_uml">🎨 Diagramme de Séquence UML</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p>Voici le diagramme détaillant le workflow des demandes d’intérêt avec notifications :</p>
-</div>
-<div class="imageblock">
-<div class="content">
-<img src="images/notifications-sequence.svg" alt="notifications sequence" width="1618" height="1553">
-</div>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_tests_validation">1. ✅ Tests &amp; Validation</h2>
+<h2 id="_tests_validation">✅ Tests &amp; Validation</h2>
 <div class="sectionbody">
 <div class="ulist">
 <ul>
@@ -729,7 +1228,7 @@ Ajout d’une nouvelle section permettant aux utilisateurs de <strong>suivre leu
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2025-01-18 18:48:19 +0100
+Last updated 2025-01-19 21:23:57 +0100
 </div>
 </div>
 </body>
