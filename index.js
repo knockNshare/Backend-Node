@@ -176,6 +176,64 @@ app.get('/api/events', (req, res) => {
     });
 });
 
+app.get('/api/events/search', (req, res) => {
+    const { keyword, categories, cityId } = req.query;
+    // Step 1: Start with the base query to fetch events
+    let sql = 'SELECT * FROM events WHERE 1=1';  // 1=1 is used to easily append additional conditions
+
+    // Step 2: Add filter for keyword (title and description) using Fuse.js if provided
+    let filterConditions = [];
+
+
+
+    // Step 3: Add filter for categories if provided
+    if (categories && categories.trim() !== "") {
+        const categoriesArray = categories.split(',');  // Categories come in as a comma-separated string
+        filterConditions.push(`category IN (${categoriesArray.map(c => `'${c}'`).join(',')})`);
+    }
+
+    // Step 4: Add filter for cityId if provided
+    if (cityId && cityId.trim() !== "") {
+        filterConditions.push(`city_id = ${cityId}`);
+    }
+
+    // Step 5: Combine all filter conditions
+    if (filterConditions.length > 0) {
+        sql += ' AND ' + filterConditions.join(' AND ');
+    }
+
+    // Step 6: Query the database with the constructed SQL query
+    con.query(sql, (err, results) => {
+        if (err) {
+            console.error('Erreur SQL (fetch events):', err);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        // Step 7: If keyword is provided, use Fuse.js for fuzzy searching in title and description
+        if (keyword && keyword.trim() !== "") {
+            const fuseOptions = {
+                keys: ['title', 'description'],
+                threshold: 0.4,  // Lower threshold to make the fuzzy search more flexible (default is 0.4)
+                distance: 100,   // Increase the distance for matching (allows partial matches)
+                includeScore: true,
+                minMatchCharLength: 2,  // To avoid very short matches like a single character
+                
+            };
+
+            const fuse = new Fuse(results, fuseOptions);
+            const fuzzyResults = fuse.search(keyword);
+            const matchedEvents = fuzzyResults.map(result => result.item);
+            console.log("🟢 Fuzzy matched events:", matchedEvents);
+            return res.status(200).json(matchedEvents);
+        }
+
+        // If no keyword is provided, return the filtered events directly
+        console.log("🟢 Filtered events found:", results);
+        res.status(200).json(results);
+    });
+});
+
+
 // Route pour modifier un événement
 app.put('/api/events/:id', (req, res) => {
     const eventId = req.params.id;
@@ -567,7 +625,9 @@ app.get('/api/propositions/search', (req, res) => {
                 const fuseOptions = {
                     keys: ['title', 'description'],  // The fields to search
                     threshold: 0.4,  // Fuzzy search threshold (lower is more strict)
-                    includeScore: true
+                    includeScore: true,
+                    distance: 100,   // Increase the distance for matching (allows partial matches)
+                    minMatchCharLength: 2,  // To avoid very short matches like a single character
                 };
 
                 // Initialize Fuse.js with the fetched results
