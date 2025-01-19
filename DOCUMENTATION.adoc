@@ -22,52 +22,26 @@ Cette documentation couvre :
 
 ---
 
-== 🚀 Fonctionnalités Ajoutées
+== 🚀 Grandes Fonctionnalités
 
-=== 📌 2.1 Système de Notifications en Temps Réel 🔔
-
-**Description**
-
-Le système de notifications permet aux utilisateurs de **recevoir des alertes instantanées** lorsqu’ils effectuent des actions importantes (**demande d’intérêt envoyée, acceptation/refus d’une demande**).
-
-**Flux Utilisateur**
-
-. Un utilisateur effectue une action (*ex : envoie une demande d’intérêt*).
-. Une notification est **générée en base de données** et **envoyée en temps réel via WebSockets**.
-. L’**icône 🔔 dans la navbar affiche un badge** avec le nombre de notifications non lues.
-. L’utilisateur peut ouvrir **le panneau de notifications** et voir les nouvelles alertes.
-. Les notifications peuvent être **supprimées individuellement** ou **toutes en même temps**.
-
-**Endpoints Backend**
-|===
-| Méthode | Endpoint | Description
-| **GET** | `/notifications/:userId` | Récupère toutes les notifications d’un utilisateur.
-| **POST** | `/notifications` | Crée une nouvelle notification.
-| **DELETE** | `/notifications/:notifId` | Supprime une notification spécifique.
-| **DELETE** | `/notifications/all/:userId` | Supprime toutes les notifications d’un utilisateur.
-|===
-
----
-
-=== 📌 2.2 Workflow des Demandes d’Intérêt 📩
+=== 📌 2.1 Gestion des Demandes d'Intérêt & Notifications en Temps Réel
 
 **Description**
 
-Les utilisateurs peuvent maintenant :
-
-* **Envoyer une demande d’intérêt** pour une annonce.
-* **Recevoir une notification immédiate** lorsqu’une demande est reçue.
-* **Accepter ou refuser une demande** via l’interface.
-* **Notifier l’utilisateur intéressé** du statut de sa demande **en temps réel**.
+Cette fonctionnalité regroupe tout le flux des demandes d'intérêt, y compris les notifications en temps réel. Les utilisateurs peuvent envoyer et recevoir des demandes d'intérêt, puis être notifiés de l'acceptation ou du refus de la demande en temps réel.
 
 **Flux Utilisateur**
 
-. **L’utilisateur intéressé clique sur "Demander"**.
-. La demande est enregistrée en base (**POST /interests**).
-. Le proposeur reçoit une **notification** dans son espace “Mes Intérêts Reçus”.
-. **Il peut accepter ou refuser la demande**.
-. L’utilisateur intéressé est **notifié immédiatement** du résultat.
-. **Si accepté, les coordonnées du proposeur sont affichées**.
+1. **Envoi d'une Demande d'Intérêt**
+    - L'utilisateur intéressé clique sur "Demander".
+    - La demande est enregistrée en base (via **POST /interests**).
+    - Une notification en temps réel est envoyée au proposeur.
+2. **Consultation des Demandes d'Intérêt**
+    - Le proposeur accède à "Mes Intérêts Reçus".
+    - Il voit la demande et peut l’accepter ou la refuser.
+3. **Notifications et Actions en Temps Réel**
+    - Si la demande est acceptée, le demandeur est notifié avec les coordonnées du proposeur.
+    - Si la demande est refusée, le demandeur est informé de la décision.
 
 **Endpoints Backend**
 |===
@@ -76,67 +50,14 @@ Les utilisateurs peuvent maintenant :
 | **GET** | `/interests/received/:userId` | Récupérer les demandes reçues.
 | **GET** | `/interests/sent/:userId` | Récupérer les demandes envoyées.
 | **PUT** | `/interests/:id` | Accepter ou refuser une demande.
+| **GET** | `/notifications/:userId` | Récupère toutes les notifications d’un utilisateur.
+| **POST** | `/notifications` | Crée une nouvelle notification.
+| **DELETE** | `/notifications/:notifId` | Supprime une notification spécifique.
+| **DELETE** | `/notifications/all/:userId` | Supprime toutes les notifications d’un utilisateur.
 |===
 
----
-
-=== 📌 2.3 Page “Mes Demandes Envoyées” 📤
-
-**Description**
-
-Ajout d’une nouvelle section permettant aux utilisateurs de **suivre leurs demandes** et voir si elles sont **acceptées ou refusées**.
-
-**Flux Utilisateur**
-
-. L’utilisateur consulte **la section “Mes demandes envoyées”**.
-. Il voit **toutes ses demandes** avec leur statut actuel.
-. **Si la demande est acceptée**, il accède aux **coordonnées du proposeur**.
-
-**Endpoints Backend**
-|===
-| Méthode | Endpoint | Description
-| **GET** | `/interests/sent/:userId` | Retourne les demandes envoyées par l’utilisateur.
-| **PUT** | `/interests/:id` | Met à jour le statut d’une demande.
-|===
-
----
-
-=== 📌 2.4 Améliorations UX/UI 🎨
-
-L’application a été **remaniée graphiquement** pour une **meilleure expérience utilisateur** :
-
-* ✅ **Nouvelle navbar fixe** avec **navigation fluide**.
-* ✅ **Popup de notifications stylée** avec **mise en forme propre**.
-* ✅ **Suppression du bleu flashy** et **adoption d’un design plus épuré**.
-* ✅ **Animations CSS** pour un rendu **plus dynamique**.
-* ✅ **Espacement et marges ajustés** pour **une meilleure lisibilité**.
-
----
-
-== 📊 Impact Métier & Valeur Ajoutée
-
-|===
-| Fonctionnalité | Valeur Ajoutée
-| 🔔 Notifications en temps réel | Permet aux utilisateurs d’être informés instantanément des actions importantes.
-| 📩 Gestion des demandes d’intérêt | Simplifie l’interaction entre utilisateurs, rendant le processus plus intuitif.
-| 📤 Suivi des demandes envoyées | Apporte de la transparence sur l’état des interactions.
-| 🎨 Expérience utilisateur améliorée | Favorise l’adoption de la plateforme grâce à une interface plus intuitive et agréable.
-|===
-
----
-
-== 🎨 Diagramme de Séquence UML
-
-Voici le diagramme détaillant le workflow des demandes d’intérêt avec notifications :
-
-:toc:
-:source-highlighter: rouge
-:icons: font
-:sectnums:
-:imagesdir: images
-:diagram-extension: svg
-:diagram-dir: diagrams
-[plantuml, notifications-sequence, svg]
+**Diagramme de Séquence : Demande d'Intérêt et Notifications**
+[plantuml, demande-notification-sequence, svg]
 ----
 @startuml
 participant "Utilisateur Intéressé (par l'annonce)" as UI
@@ -180,6 +101,125 @@ API -> WS: 📡 **Émet une notification avec le statut refusé**
 WS --> UI: 🔔 "**❌ Votre demande a été refusée.**"
 @enduml
 ----
+
+---
+
+=== 📌 2.2 Recherche de Propositions
+
+**Description**
+
+Cette fonctionnalité permet aux utilisateurs de rechercher des propositions en fonction de plusieurs critères : mots-clés, catégorie et distance géographique.
+
+**Flux Utilisateur**
+
+1. L'utilisateur entre des mots-clés et sélectionne une catégorie de service.
+2. Le système effectue une recherche floue sur les titres et descriptions des propositions.
+3. Le système filtre les propositions par catégorie sélectionnée.
+4. Le système calcule la distance géographique entre l'utilisateur et les propositions.
+5. Les résultats sont affichés, triés par pertinence et proximité géographique.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **GET** | `/propositions/search` | Recherche des propositions en fonction des mots-clés, catégorie et distance.
+|===
+
+**Diagramme de Séquence : Recherche de Propositions**
+[plantuml, recherche-sequence, svg]
+----
+@startuml
+actor "Utilisateur" as User
+participant "Frontend (React)" as FE
+participant "Backend API" as API
+participant "Base de Données" as DB
+participant "Fuse.js" as Fuse
+participant "WebSocket (si notifications)" as WS
+
+== 1. L'utilisateur effectue une recherche ==
+User -> FE: Entre des mots-clés et sélectionne une catégorie
+FE -> API: **GET** /propositions/search (mots-clés, catégorie, utilisateur_id)
+API -> DB: 🔍 Récupère les propositions en fonction de la catégorie
+DB --> API: 📋 Liste des propositions filtrées par catégorie
+API -> Fuse: Utilise Fuse.js pour recherche floue sur 'title' et 'description'
+Fuse --> API: 📋 Liste des propositions correspondant aux mots-clés
+API -> DB: 🔍 Récupère les coordonnées de l'utilisateur (latitude, longitude)
+DB --> API: 📋 Coordonnées de l'utilisateur
+API -> DB: 🔍 Calcule la distance entre l'utilisateur et chaque proposition
+DB --> API: 📋 Liste des propositions avec distances
+API -> FE: 🖥️ Affiche les résultats avec distance et pertinence
+FE --> User: Montre les propositions filtrées
+
+@enduml
+----
+
+---
+
+== 🚀 Petites Fonctionnalités
+
+=== 📌 2.1 Page “Mes Demandes Envoyées” 📤
+
+**Description**
+
+Ajout d’une nouvelle section permettant aux utilisateurs de **suivre leurs demandes** et voir si elles sont **acceptées ou refusées**.
+
+**Flux Utilisateur**
+
+1. L’utilisateur consulte **la section “Mes demandes envoyées”**.
+2. Il voit **toutes ses demandes** avec leur statut actuel.
+3. **Si la demande est acceptée**, il accède aux **coordonnées du proposeur**.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **GET** | `/interests/sent/:userId` | Retourne les demandes envoyées par l’utilisateur.
+| **PUT** | `/interests/:id` | Met à jour le statut d’une demande.
+|===
+
+---
+
+=== 📌 2.2 Notifications en Temps Réel 🔔
+
+**Description**
+
+Les notifications sont envoyées en temps réel à l’utilisateur lorsqu’une action importante se produit (acceptation/refus d’une demande, etc.). Cela permet une interaction fluide et réactive avec l’application.
+
+**Flux Utilisateur**
+
+1. L’utilisateur effectue une action qui génère une notification.
+2. Une notification apparaît instantanément dans le panneau des notifications.
+3. L’utilisateur peut la consulter et la supprimer.
+
+**Endpoints Backend**
+|===
+| Méthode | Endpoint | Description
+| **POST** | `/notifications` | Crée une nouvelle notification.
+| **GET** | `/notifications/:userId` | Récupère toutes les notifications d’un utilisateur.
+| **DELETE** | `/notifications/:notifId` | Supprime une notification spécifique.
+| **DELETE** | `/notifications/all/:userId` | Supprime toutes les notifications d’un utilisateur.
+|===
+
+---
+
+=== 📌 2.3 Améliorations UX/UI 🎨
+
+L’application a été **remaniée graphiquement** pour une **meilleure expérience utilisateur** :
+
+* ✅ **Nouvelle navbar fixe** avec **navigation fluide**.
+* ✅ **Popup de notifications stylée** avec **mise en forme propre**.
+* ✅ **Suppression du bleu flashy** et **adoption d’un design plus épuré**.
+* ✅ **Animations CSS** pour un rendu **plus dynamique**.
+* ✅ **Espacement et marges ajustés** pour **une meilleure lisibilité**.
+
+---
+== 📊 Impact Métier & Valeur Ajoutée
+
+|===
+| Fonctionnalité | Valeur Ajoutée
+| 🔔 Notifications en temps réel | Permet aux utilisateurs d’être informés instantanément des actions importantes.
+| 📩 Gestion des demandes d’intérêt | Simplifie l’interaction entre utilisateurs, rendant le processus plus intuitif.
+| 📤 Suivi des demandes envoyées | Apporte de la transparence sur l’état des interactions.
+| 🎨 Expérience utilisateur améliorée | Favorise l’adoption de la plateforme grâce à une interface plus intuitive et agréable.
+|===
 
 == ✅ Tests & Validation
 
