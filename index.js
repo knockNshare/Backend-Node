@@ -134,11 +134,25 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+// Pour valider une image à partir de son URL
+app.get('/api/validate-image', async (req, res) => {
+    const { url } = req.query;
+
+    try {
+        const response = await fetch(url, { method: 'HEAD' }); // Vérifie l'image
+        if (!response.ok) throw new Error('Invalid image');
+        res.status(200).json({ valid: true });
+    } catch (error) {
+        res.status(400).json({ valid: false, error: 'Invalid image URL' });
+    }
+});
+
+
 // Route for creating an event
 app.post('/api/events', (req, res) => {
     const { title, description, date, category, imageURL, address, city_id, creator_id } = req.body;
 
-    const sql = 'INSERT INTO events (title, description, date, category, imageURL, address, city_id, creator_id) VALUES ( ?, ?, ?, ?, ?, ?,?,?)';
+    const sql = 'INSERT INTO events (title, description, date, category, imageURL, address, city_id, creator_id) VALUES (?, ?, ?, ?, ?, ?, ?,?)';
     con.query(sql, [title, description, date, category, imageURL, address, city_id, creator_id], (err, result) => {
         if (err) {
             console.error('Erreur SQL :', err);
@@ -160,6 +174,73 @@ app.get('/api/events', (req, res) => {
         res.json(results);
     });
 });
+
+// Route pour modifier un événement
+app.put('/api/events/:id', (req, res) => {
+    const eventId = req.params.id;
+    const { title, description, date, category, imageURL, address, creator_id } = req.body;
+
+    // Mise à jour d’un événement par son ID
+    const sql = `
+        UPDATE events 
+        SET title = ?, description = ?, date = ?, category = ?, imageURL = ?, address = ?
+        WHERE id = ? AND creator_id = ?
+    `;
+    con.query(sql, [title, description, date, category, imageURL, address, eventId, creator_id], (err, result) => {
+        if (err) {
+            console.error('Erreur SQL (modification):', err);
+            return res.status(500).json({ error: 'Erreur lors de la modification de l\'événement.' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Événement introuvable ou non autorisé.' });
+        }
+
+        res.status(200).json({ message: 'Événement modifié avec succès.' });
+    });
+});
+
+
+// Route pour récupérer les détails d'un événement par son ID
+app.get('/api/events/:id', (req, res) => {
+    const eventId = req.params.id;
+
+    const sql = 'SELECT * FROM events WHERE id = ?';
+    con.query(sql, [eventId], (err, results) => {
+        if (err) {
+            console.error('Erreur SQL :', err);
+            return res.status(500).json({ error: 'Erreur lors de la récupération de l\'événement.' });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Événement introuvable.' });
+        }
+
+        res.status(200).json(results[0]); // Retourne les détails de l'événement
+    });
+});
+
+
+// Route pour supprimer un événement
+app.delete('/api/events/:id', (req, res) => {
+    const eventId = req.params.id;
+
+    // Supprimer un événement par son ID
+    const sql = 'DELETE FROM events WHERE id = ?';
+    con.query(sql, [eventId], (err, result) => {
+        if (err) {
+            console.error('Erreur SQL (suppression):', err);
+            return res.status(500).json({ error: 'Erreur lors de la suppression de l\'événement.' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Événement introuvable.' });
+        }
+
+        res.status(200).json({ message: 'Événement supprimé avec succès.' });
+    });
+});
+
 
 // Route to get events by user ID (as creator or participant)
 app.get('/api/events/user/:user_id', (req, res) => {
