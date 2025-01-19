@@ -163,6 +163,38 @@ app.post('/api/events', (req, res) => {
     });
 });
 
+app.get('events/search', (req, res) => {
+    const { search } = req.query;
+
+    if (!search) {
+        return res.status(400).json({ error: "Veuillez fournir un terme de recherche." });
+    }
+
+    const sql = `
+        SELECT *,
+            LEVENSHTEIN(LOWER(title), LOWER(?)) AS distance_title,
+            LEVENSHTEIN(LOWER(description), LOWER(?)) AS distance_description
+        FROM events
+        WHERE 
+            LEVENSHTEIN(LOWER(title), LOWER(?)) <= 3 
+            OR LEVENSHTEIN(LOWER(description), LOWER(?)) <= 3
+        ORDER BY distance_title ASC, distance_description ASC
+    `;
+
+    con.query(sql, [search, search, search, search], (err, results) => {
+        if (err) {
+            console.error("Erreur SQL lors de la recherche d'événements :", err);
+            return res.status(500).json({ error: "Erreur lors de la recherche d'événements." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Aucun événement trouvé correspondant au terme de recherche." });
+        }
+
+        res.status(200).json(results);
+    });
+});
+
 // Route to get all events
 app.get('/api/events', (req, res) => {
     const sql = 'SELECT * FROM events';
