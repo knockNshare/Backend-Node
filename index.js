@@ -6,13 +6,56 @@ const cors = require('cors'); //Pour authoriser les requetes du front d'arriver
 const mysql = require('mysql2'); //mettre mysql au lieu de mysql2
 const express = require('express');
 const bodyParser = require('body-parser');
-require('dotenv').config(); // This will load the variables from the .env file
+require('dotenv').config();
+const http = require("http");
+const socketIo = require("socket.io");
+const Fuse = require('fuse.js');
 
 // Initialiser l'application Express
 const app = express();
-const PORT = process.env.PORT || 3000; // Utilisation de la variable d'environnement ou port par défaut
 
-app.use(cors()); // Permet la requete frontend
+// Configuration socket.io pour les notifications en temps réel
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: "*", 
+    methods: ["GET", "POST"],
+  },
+});
+
+app.use(cors()); 
+app.use(express.json());
+
+app.set("socketio", io); 
+
+io.on("connection", (socket) => {
+    const userId = socket.handshake.query.userId;
+
+    if (!userId|| userId === "undefined") {
+        console.warn("⚠️ Connexion WebSocket rejetée : userId est vide !");
+        socket.disconnect();
+        return;
+    }
+
+    console.log(`🟢 Connexion WebSocket - Utilisateur ${userId} (Socket ID: ${socket.id})`);
+
+    // Associer userId à un canal spécifique
+    socket.join(`user_${userId}`);
+
+    socket.on("disconnect", () => {
+        console.log(`🔴 Déconnexion - Utilisateur ${userId} (Socket ID: ${socket.id})`);
+    });
+});
+
+// Lancer le serveur WebSocket
+server.listen(5001, () => {
+    console.log("✅ Serveur WebSocket démarré sur le port 5001");
+});
+
+// Lancer l'API principale sur le port 3000
+const PORT = process.env.PORT || 3000;
+
+
 
 // Middleware
 app.use(bodyParser.json()); // Parse JSON request bodies
@@ -45,22 +88,35 @@ app.get("/get", (req,res) =>{
 });
 // Route pour l'inscription
 app.post('/api/signup', (req, res) => {
-
     const { name, email, phone_number, password, city_id } = req.body;
 
     if (!name || !email || !phone_number || !password || !city_id) {
         return res.status(400).json({ error: 'Tous les champs requis doivent être remplis.' });
     }
 
-    const sql = 'INSERT INTO users (name, email, phone_number, password, city_id) VALUES (?, ?, ?, ?, ?)';
-    con.query(sql, [name, email, phone_number, password, city_id], (err, result) => {
-    if (err) {
-        console.error('Erreur SQL :', err);
-        res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur.' });
-    } else {
-        res.status(201).json({ message: 'Utilisateur créé avec succès' });
-    }
-});
+    // Vérifier si l'email existe déjà
+    const checkEmailQuery = 'SELECT email FROM users WHERE email = ?';
+    con.query(checkEmailQuery, [email], (err, results) => {
+        if (err) {
+            console.error('Erreur SQL lors de la vérification de l\'email :', err);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        if (results.length > 0) {
+            return res.status(409).json({ error: 'Cette adresse email est déjà utilisée. Veuillez en choisir une autre.' });
+        }
+
+        // Insérer le nouvel utilisateur (sans hashage)
+        const insertUserQuery = 'INSERT INTO users (name, email, phone_number, password, city_id) VALUES (?, ?, ?, ?, ?)';
+        con.query(insertUserQuery, [name, email, phone_number, password, city_id], (err, result) => {
+            if (err) {
+                console.error('Erreur SQL lors de l\'insertion de l\'utilisateur :', err);
+                return res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur' });
+            }
+
+            res.status(201).json({ message: 'Utilisateur créé avec succès' });
+        });
+    });
 });
 
 //Ajout d'une route pour la connexion de l'utilisateur (authentification)
@@ -82,12 +138,26 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+// Pour valider une image à partir de son URL
+app.get('/api/validate-image', async (req, res) => {
+    const { url } = req.query;
+
+    try {
+        const response = await fetch(url, { method: 'HEAD' }); // Vérifie l'image
+        if (!response.ok) throw new Error('Invalid image');
+        res.status(200).json({ valid: true });
+    } catch (error) {
+        res.status(400).json({ valid: false, error: 'Invalid image URL' });
+    }
+});
+
+
 // Route for creating an event
 app.post('/api/events', (req, res) => {
-    const { title, description, date, category, imageURL, address, latitude, longitude, creator_id } = req.body;
+    const { title, description, date, category, imageURL, address, city_id, creator_id } = req.body;
 
-    const sql = 'INSERT INTO events (title, description, date, category, imageURL, address, latitude, longitude, creator_id) VALUES (?, ?, ?, ?, ?, ?, ?,?,?)';
-    con.query(sql, [title, description, date, category, imageURL, address, latitude, longitude, creator_id], (err, result) => {
+    const sql = 'INSERT INTO events (title, description, date, category, imageURL, address, city_id, creator_id) VALUES (?, ?, ?, ?, ?, ?, ?,?)';
+    con.query(sql, [title, description, date, category, imageURL, address, city_id, creator_id], (err, result) => {
         if (err) {
             console.error('Erreur SQL :', err);
             return res.status(500).json({ error: 'Erreur lors de la création de l\'événement' });
@@ -95,6 +165,176 @@ app.post('/api/events', (req, res) => {
         res.status(201).json({ message: 'Événement créé avec succès', event_id: result.insertId });
     });
 });
+
+app.get('events/search', (req, res) => {
+    const { search } = req.query;
+
+    if (!search) {
+        return res.status(400).json({ error: "Veuillez fournir un terme de recherche." });
+    }
+
+    const sql = `
+        SELECT *,
+            LEVENSHTEIN(LOWER(title), LOWER(?)) AS distance_title,
+            LEVENSHTEIN(LOWER(description), LOWER(?)) AS distance_description
+        FROM events
+        WHERE 
+            LEVENSHTEIN(LOWER(title), LOWER(?)) <= 3 
+            OR LEVENSHTEIN(LOWER(description), LOWER(?)) <= 3
+        ORDER BY distance_title ASC, distance_description ASC
+    `;
+
+    con.query(sql, [search, search, search, search], (err, results) => {
+        if (err) {
+            console.error("Erreur SQL lors de la recherche d'événements :", err);
+            return res.status(500).json({ error: "Erreur lors de la recherche d'événements." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Aucun événement trouvé correspondant au terme de recherche." });
+        }
+
+        res.status(200).json(results);
+    });
+});
+
+// Route to get all events
+app.get('/api/events', (req, res) => {
+    const sql = 'SELECT * FROM events';
+
+    con.query(sql, (err, results) => {
+        if (err) {
+            console.error('Erreur SQL :', err);
+            return res.status(500).json({ error: 'Erreur lors de la récupération des événements.' });
+        }
+        res.json(results);
+    });
+});
+
+app.get('/api/events/search', (req, res) => {
+    const { keyword, categories, cityId } = req.query;
+    // Step 1: Start with the base query to fetch events
+    let sql = 'SELECT * FROM events WHERE 1=1';  // 1=1 is used to easily append additional conditions
+
+    // Step 2: Add filter for keyword (title and description) using Fuse.js if provided
+    let filterConditions = [];
+
+
+
+    // Step 3: Add filter for categories if provided
+    if (categories && categories.trim() !== "") {
+        const categoriesArray = categories.split(',');  // Categories come in as a comma-separated string
+        filterConditions.push(`category IN (${categoriesArray.map(c => `'${c}'`).join(',')})`);
+    }
+
+    // Step 4: Add filter for cityId if provided
+    if (cityId && cityId.trim() !== "") {
+        filterConditions.push(`city_id = ${cityId}`);
+    }
+
+    // Step 5: Combine all filter conditions
+    if (filterConditions.length > 0) {
+        sql += ' AND ' + filterConditions.join(' AND ');
+    }
+
+    // Step 6: Query the database with the constructed SQL query
+    con.query(sql, (err, results) => {
+        if (err) {
+            console.error('Erreur SQL (fetch events):', err);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        // Step 7: If keyword is provided, use Fuse.js for fuzzy searching in title and description
+        if (keyword && keyword.trim() !== "") {
+            const fuseOptions = {
+                keys: ['title', 'description'],
+                threshold: 0.4,  // Lower threshold to make the fuzzy search more flexible (default is 0.4)
+                distance: 100,   // Increase the distance for matching (allows partial matches)
+                includeScore: true,
+                minMatchCharLength: 2,  // To avoid very short matches like a single character
+                
+            };
+
+            const fuse = new Fuse(results, fuseOptions);
+            const fuzzyResults = fuse.search(keyword);
+            const matchedEvents = fuzzyResults.map(result => result.item);
+            console.log("🟢 Fuzzy matched events:", matchedEvents);
+            return res.status(200).json(matchedEvents);
+        }
+
+        // If no keyword is provided, return the filtered events directly
+        console.log("🟢 Filtered events found:", results);
+        res.status(200).json(results);
+    });
+});
+
+
+// Route pour modifier un événement
+app.put('/api/events/:id', (req, res) => {
+    const eventId = req.params.id;
+    const { title, description, date, category, imageURL, address, creator_id } = req.body;
+
+    // Mise à jour d’un événement par son ID
+    const sql = `
+        UPDATE events 
+        SET title = ?, description = ?, date = ?, category = ?, imageURL = ?, address = ?
+        WHERE id = ? AND creator_id = ?
+    `;
+    con.query(sql, [title, description, date, category, imageURL, address, eventId, creator_id], (err, result) => {
+        if (err) {
+            console.error('Erreur SQL (modification):', err);
+            return res.status(500).json({ error: 'Erreur lors de la modification de l\'événement.' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Événement introuvable ou non autorisé.' });
+        }
+
+        res.status(200).json({ message: 'Événement modifié avec succès.' });
+    });
+});
+
+
+// Route pour récupérer les détails d'un événement par son ID
+app.get('/api/events/:id', (req, res) => {
+    const eventId = req.params.id;
+
+    const sql = 'SELECT * FROM events WHERE id = ?';
+    con.query(sql, [eventId], (err, results) => {
+        if (err) {
+            console.error('Erreur SQL :', err);
+            return res.status(500).json({ error: 'Erreur lors de la récupération de l\'événement.' });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: 'Événement introuvable.' });
+        }
+
+        res.status(200).json(results[0]); // Retourne les détails de l'événement
+    });
+});
+
+
+// Route pour supprimer un événement
+app.delete('/api/events/:id', (req, res) => {
+    const eventId = req.params.id;
+
+    // Supprimer un événement par son ID
+    const sql = 'DELETE FROM events WHERE id = ?';
+    con.query(sql, [eventId], (err, result) => {
+        if (err) {
+            console.error('Erreur SQL (suppression):', err);
+            return res.status(500).json({ error: 'Erreur lors de la suppression de l\'événement.' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Événement introuvable.' });
+        }
+
+        res.status(200).json({ message: 'Événement supprimé avec succès.' });
+    });
+});
+
 
 // Route to get events by user ID (as creator or participant)
 app.get('/api/events/user/:user_id', (req, res) => {
@@ -182,6 +422,70 @@ app.get('/api/events/region/:user_id', (req, res) => {
         });
     });
 });
+
+const getEventsByCity = async (city_id) => {
+    // SQL query to retrieve events by city_id
+    const query = `
+        SELECT *
+        FROM events
+        WHERE city_id = ?;  
+    `;
+
+    try {
+        // Run the query with the promise-based API
+        const [rows] = await con.promise().query(query, [city_id]);  // Use promise().query() and pass city_id
+        return rows;  // `rows` is the result of the query
+    } catch (error) {
+        console.error('Error fetching events:', error);
+        throw error; // Propagate the error
+    }
+};
+
+app.get('/api/events/city/:city_id', async (req, res) => {
+    console.log("I get events by city");
+
+    // Access city_id from the route parameters
+    const { city_id } = req.params;  // Access city_id via req.params
+
+    try {
+        // Fetch events by city_id from the database
+        const events = await getEventsByCity(city_id);
+        res.json(events);  // Send the result as JSON
+    } catch (error) {
+        console.error('Error fetching events by city:', error);
+        res.status(500).send("Internal Server Error");  // Handle any errors
+    }
+});
+
+const getcities = async () => {
+    // SQL query to retrieve the cities
+    const query = `
+        SELECT *
+        FROM cities;
+    `;
+
+    try {
+        // Run the query with the promise-based API
+        const [rows] = await con.promise().query(query);  // Use promise().query() here
+        return rows;  // `rows` is the result of the query
+    } catch (error) {
+        console.error('Error fetching cities:', error);
+        throw error; // Propagate the error
+    }
+};
+app.get('/cities', async (req, res) => {
+    console.log("I entered cities");
+
+    try {
+        // Fetch cities from the database
+        const cities = await getcities();
+        res.json(cities);  // Send the result as JSON
+    } catch (error) {
+        console.error('Error fetching cities:', error);
+        res.status(500).send("Internal Server Error");  // Handle any errors
+    }
+});
+
 app.post('/api/events/participate', (req, res) => {
     const { event_id, user_id } = req.body;
 
@@ -250,11 +554,58 @@ app.delete('/api/events/leave', (req, res) => {
         });
     });
 });
-// Route to search propositions based on service type, interest status, and position
-app.get('/api/propositions/search', (req, res) => {
-    const { service_type, user_id } = req.query;
 
-    if (!service_type || !user_id) {
+//--------------------FIN_EVENTS---------------------
+
+//--------------------CATEGORIES---------------------
+
+app.get('/api/categories', (req, res) => {
+    const sql = 'SELECT id, service_type FROM categories';
+
+    con.query(sql, (err, results) => {
+        if (err) {
+            console.error('Erreur SQL :', err);
+            return res.status(500).json({ error: 'Failed to fetch categories' });
+        }
+        res.json(results);
+    });
+});
+
+app.delete("/categories/:id", (req, res) => {
+    const categoryId = req.params.id;
+
+    if (!categoryId) {
+        return res.status(400).json({ error: "Category ID is required." });
+    }
+
+    const query = `DELETE FROM categories WHERE id = ?`;
+
+    con.query(query, [categoryId], (err, results) => {
+        if (err) {
+            console.error("Error deleting category:", err);
+            return res.status(500).json({
+                error: "An error occurred while deleting the category."
+            });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({
+                error: "Category not found."
+            });
+        }
+
+        res.json({
+            message: "Category successfully deleted."
+        });
+    });
+});
+
+//--------------------PROPOSITIONS---------------------
+
+app.get('/api/propositions/search', (req, res) => {
+    const { service_type, user_id, keyword } = req.query;
+
+    if (!user_id) {
         return res.status(400).json({ error: 'Service type and user_id are required' });
     }
 
@@ -279,7 +630,7 @@ app.get('/api/propositions/search', (req, res) => {
         const userLatitude = userResults[0].user_latitude;
         const userLongitude = userResults[0].user_longitude;
 
-        // Step 2: SQL query to get propositions based on service type and is_active status, including proposer city
+        // Step 2: SQL query to get propositions based on service type, is_active status, and location
         let sql = `
             SELECT p.*, 
                    ( 6371 * acos( cos( radians(?) ) * cos( radians(c.latitude) ) * cos( radians(c.longitude) - radians(?) ) + sin( radians(?) ) * sin( radians(c.latitude) ) ) ) AS distance
@@ -291,42 +642,50 @@ app.get('/api/propositions/search', (req, res) => {
             AND p.is_active = true
         `;
 
-        // Add a condition to limit results to a certain distance (e.g., 50 km)
-        const distanceLimit = 50; // Limit distance to 50 km
-        sql += ` HAVING distance <= ?`;
+        // Step 3: Initialize query parameters
+        const queryParams = [userLatitude, userLongitude, userLatitude, service_type];
 
-        // Step 3: Execute the query
-        con.query(sql, [userLatitude, userLongitude, userLatitude, service_type, distanceLimit], (err, results) => {
+        // Step 4: Fetch all propositions
+        con.query(sql, queryParams, (err, results) => {
             if (err) {
                 console.error('Erreur SQL (search propositions):', err);
                 return res.status(500).json({ error: 'Erreur serveur' });
             }
 
-            // Step 4: Return results if propositions found, else return error
-            if (results.length === 0) {
-                return res.status(404).json({ error: 'Aucune proposition trouvée avec les critères spécifiés' });
+            // Step 5: Use Fuse.js for fuzzy searching on 'title' and 'description' if keyword is provided
+            if (keyword && keyword.trim() !== "") {
+                console.log("keywords are ", keyword);
+
+                // Define Fuse.js options for searching title and description fields
+                const fuseOptions = {
+                    keys: ['title', 'description'],  // The fields to search
+                    threshold: 0.4,  // Fuzzy search threshold (lower is more strict)
+                    includeScore: true,
+                    distance: 100,   // Increase the distance for matching (allows partial matches)
+                    minMatchCharLength: 2,  // To avoid very short matches like a single character
+                };
+
+                // Initialize Fuse.js with the fetched results
+                const fuse = new Fuse(results, fuseOptions);
+
+                // Perform the fuzzy search using the keyword
+                const fuzzyResults = fuse.search(keyword);
+
+                // Extract the matching results
+                const matchedPropositions = fuzzyResults.map(result => result.item);
+
+                console.log("🟢 Fuzzy matched results: ", matchedPropositions);
+
+                // Return the matched propositions
+                return res.status(200).json(matchedPropositions);
             }
 
-            // Return the matching propositions
+            // If no keyword, return all results with location filtering
+            console.log("🟢 Résultats trouvés :", results);
             res.status(200).json(results);
         });
     });
-
-    
 });
-
-app.get('/api/categories', (req, res) => {
-    const sql = 'SELECT id, service_type FROM categories';
-
-    con.query(sql, (err, results) => {
-        if (err) {
-            console.error('Erreur SQL :', err);
-            return res.status(500).json({ error: 'Failed to fetch categories' });
-        }
-        res.json(results);
-    });
-});
-
 //Ajouter une proposition
 app.post("/propositions", (req, res) => {
     const { category_id, proposer_id, title, description } = req.body;
@@ -366,80 +725,11 @@ app.post("/propositions", (req, res) => {
     });
 });
 
-// ajouter un nouvel intérêt.
-app.post("/interests", (req, res) => {
-    const { proposition_id, interested_user_id, start_date, end_date } = req.body;
+app.put("/propositions/:id", (req, res) => {
+    const propositionId = req.params.id;
+    const { category_id, proposer_id, title, description, is_active } = req.body;
 
-    // Vérification des champs requis
-    if (!proposition_id || !interested_user_id || !start_date) {
-        return res.status(400).json({
-            error: "Missing required fields: proposition_id, interested_user_id, and start_date are required."
-        });
-    }
-
-    // Vérifie que les clés étrangères existent
-    const checkQuery = `
-        SELECT
-                (SELECT COUNT(*) FROM propositions WHERE id = ?) AS proposition_exists,
-                (SELECT COUNT(*) FROM users WHERE id = ?) AS user_exists
-    `;
-
-    con.query(checkQuery, [proposition_id, interested_user_id], (err, results) => {
-        if (err) {
-            console.error("Error checking foreign keys:", err);
-            return res.status(500).json({
-                error: "An error occurred while validating foreign keys."
-            });
-        }
-
-        const { proposition_exists, user_exists } = results[0];
-
-        // Vérifie si les clés étrangères existent
-        if (!proposition_exists || !user_exists) {
-            return res.status(400).json({
-                error: "Invalid foreign keys: proposition_id or interested_user_id does not exist."
-            });
-        }
-
-        // Si tout est valide, insère l'intérêt
-        const query = `
-            INSERT INTO interests (proposition_id, interested_user_id, start_date, end_date, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
-        `;
-
-        con.query(query, [proposition_id, interested_user_id, start_date, end_date || null], (err, results) => {
-            if (err) {
-                console.error("SQL Error:", err);
-                return res.status(500).json({
-                    error: "An error occurred while adding the interest."
-                });
-            }
-
-            res.status(201).json({
-                message: "Interest successfully created",
-                data: {
-                    id: results.insertId,
-                    proposition_id,
-                    interested_user_id,
-                    start_date,
-                    end_date,
-                    status: "pending",
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                }
-            });
-        });
-    });
-});
-
-
-
-// modifier un intérêt existant par son ID.
-app.put("/interests/:id", (req, res) => {
-    const interestId = req.params.id;
-    const { start_date, end_date, status } = req.body;
-
-    if (!start_date && !end_date && !status) {
+    if (!category_id && !proposer_id && !title && !description && is_active === undefined) {
         return res.status(400).json({
             error: "No fields provided to update."
         });
@@ -447,48 +737,369 @@ app.put("/interests/:id", (req, res) => {
 
     let fields = [];
     let values = [];
-    if (start_date) {
-        fields.push("start_date = ?");
-        values.push(start_date);
+    if (category_id) {
+        fields.push("category_id = ?");
+        values.push(category_id);
     }
-    if (end_date) {
-        fields.push("end_date = ?");
-        values.push(end_date);
+    if (proposer_id) {
+        fields.push("proposer_id = ?");
+        values.push(proposer_id);
     }
-    if (status) {
-        fields.push("status = ?");
-        values.push(status);
+    if (title) {
+        fields.push("title = ?");
+        values.push(title);
+    }
+    if (description) {
+        fields.push("description = ?");
+        values.push(description);
+    }
+    if (is_active !== undefined) {
+        fields.push("is_active = ?");
+        values.push(is_active);
     }
 
-    values.push(interestId);
+    values.push(propositionId);
 
     const query = `
-        UPDATE interests
+        UPDATE propositions
         SET ${fields.join(", ")}, updated_at = NOW()
         WHERE id = ?
     `;
 
     con.query(query, values, (err, results) => {
         if (err) {
-            console.error("Error updating interest:", err);
+            console.error("Error updating proposition:", err);
             return res.status(500).json({
-                error: "An error occurred while updating the interest."
+                error: "An error occurred while updating the proposition."
             });
         }
 
         if (results.affectedRows === 0) {
             return res.status(404).json({
-                error: "Interest not found."
+                error: "Proposition not found."
             });
         }
 
         res.json({
-            message: "Interest successfully updated",
-            updatedFields: { start_date, end_date, status }
+            message: "Proposition successfully updated",
+            updatedFields: { category_id, proposer_id, title, description, is_active }
         });
     });
 });
 
+app.delete("/propositions/:id", (req, res) => {
+    const propositionId = req.params.id;
+
+    if (!propositionId) {
+        return res.status(400).json({ error: "Proposition ID is required." });
+    }
+
+    const query = `DELETE FROM propositions WHERE id = ?`;
+
+    con.query(query, [propositionId], (err, results) => {
+        if (err) {
+            console.error("Error deleting proposition:", err);
+            return res.status(500).json({
+                error: "An error occurred while deleting the proposition."
+            });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({
+                error: "Proposition not found."
+            });
+        }
+
+        res.json({
+            message: "Proposition successfully deleted."
+        });
+    });
+});
+
+// Route pour récupérer les propositions d'un utilisateur spécifique
+app.get("/propositions/users/:id", (req, res) => {
+    const userId = req.params.id; // ID de l'utilisateur connecté
+
+    const query = `
+        SELECT p.id, p.category_id, p.proposer_id, p.title, p.description, p.is_active, p.created_at, p.updated_at,
+               c.service_type AS category_name
+        FROM propositions p
+        JOIN categories c ON p.category_id = c.id
+        WHERE p.proposer_id = ?
+    `;
+
+    con.query(query, [userId], (err, results) => {
+        if (err) {
+            console.error("Error fetching propositions:", err);
+            return res.status(500).json({ error: "An error occurred while fetching user propositions." });
+        }
+
+        if (results.length === 0) {
+            return res.json([]); // 🔥 Retourne une liste vide au lieu d'une erreur 404
+        }
+
+        res.json({
+            message: "Here are the propositions for the user",
+            data: results
+        });
+    });
+});
+
+app.get("/propositions", (req, res) => {
+    const query = `
+        SELECT p.id, p.category_id, p.proposer_id, p.title, p.description, p.is_active, p.created_at, p.updated_at,
+               c.service_type AS category_name,
+               u.name AS proposer_name, u.email AS proposer_email
+        FROM propositions p
+                 JOIN categories c ON p.category_id = c.id
+                 JOIN users u ON p.proposer_id = u.id
+    `;
+
+    con.query(query, (err, results) => {
+        if (err) {
+            console.error("Error fetching propositions:", err);
+            return res.status(500).json({ error: "An error occurred while fetching propositions." });
+        }
+
+        res.json({
+            message: "Here are the propositions",
+            data: results
+        });
+    });
+});
+
+app.get("/categories/:id/propositions", (req, res) => {
+    const categoryId = req.params.id;
+
+    const query = `
+        SELECT p.id, p.title, p.description, p.is_active, p.created_at, p.updated_at,
+               u.name AS proposer_name, u.email AS proposer_email
+        FROM propositions p
+                 JOIN users u ON p.proposer_id = u.id
+        WHERE p.category_id = ?
+    `;
+
+    con.query(query, [categoryId], (err, results) => {
+        if (err) {
+            console.error("Error fetching propositions for category:", err);
+            return res.status(500).json({
+                error: "An error occurred while fetching propositions for the category."
+            });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({
+                message: "No propositions found for this category."
+            });
+        }
+
+        res.json({
+            message: "Here are the propositions for the category",
+            data: results
+        });
+    });
+});
+
+
+const getPropositionsBySearch = async (keyword) => {
+    const query = `
+        SELECT *
+        FROM propositions
+        WHERE title LIKE ? OR description LIKE ?;
+    `;
+    try {
+        const [rows] = await con.promise().query(query, [`%${keyword}%`, `%${keyword}%`]);
+        return rows;
+    } catch (error) {
+        console.error('Error fetching propositions:', error);
+        throw error;
+    }
+};
+// Define route to search for propositions by title or description
+app.get('/api/propositions/searchText', async (req, res) => {
+    const keyword = req.query.keyword;  // Get search term from query parameter
+    console.log("I entered searchby text :",keyword);
+
+    if (!keyword) {
+        return res.status(400).send("Search term is required");  // If no search term, return an error
+    }
+
+    try {
+        const propositions = await getPropositionsBySearch(keyword);  // Fetch propositions from DB
+        res.json(propositions);  // Send the propositions as a JSON response
+    } catch (error) {
+        console.error('Error fetching propositions:', error);
+        res.status(500).send("Internal Server Error");  // Send server error if there's an issue
+    }
+});
+
+
+//--------------------INTERETS---------------------
+
+// Ajouter un nouvel intérêt.
+// Envoie une notification au proposeur en temps réel lorsqu’une demande est faite.
+// Ajouter un nouvel intérêt + Notification en temps réel
+app.post('/interests', (req, res) => {
+    const { proposition_id, interested_user_id } = req.body;
+
+    if (!proposition_id || !interested_user_id) {
+        return res.status(400).json({ error: "Proposition ID et utilisateur intéressé sont requis." });
+    }
+
+    // 🔥 Étape 1 : Récupérer le nom de l'utilisateur intéressé
+    const getUserNameSQL = `SELECT name FROM users WHERE id = ?`;
+
+    con.query(getUserNameSQL, [interested_user_id], (err, userResult) => {
+        if (err) {
+            console.error("Erreur lors de la récupération de l'utilisateur :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur" });
+        }
+
+        if (userResult.length === 0) {
+            return res.status(404).json({ error: "Utilisateur non trouvé." });
+        }
+
+        const interested_user_name = userResult[0].name; // 🔥 Récupération du nom
+
+        // 🔥 Étape 2 : Insérer l'intérêt dans la base de données
+        const insertInterestSQL = `
+            INSERT INTO interests (proposition_id, interested_user_id, start_date, status) 
+            VALUES (?, ?, NOW(), 'pending')
+        `;
+
+        con.query(insertInterestSQL, [proposition_id, interested_user_id], (err, result) => {
+            if (err) {
+                console.error("Erreur lors de l'insertion de l'intérêt :", err);
+                return res.status(500).json({ error: "Erreur interne du serveur" });
+            }
+
+            const interestId = result.insertId; // 🔥 Récupérer l'ID de l'intérêt inséré
+
+            // 🔥 Étape 3 : Récupérer l'ID du proposeur et le titre de l'offre
+            const getProposerSQL = `SELECT proposer_id, title FROM propositions WHERE id = ?`;
+
+            con.query(getProposerSQL, [proposition_id], (err, propositionResult) => {
+                if (err) {
+                    console.error("Erreur lors de la récupération de la proposition :", err);
+                    return res.status(500).json({ error: "Erreur interne du serveur" });
+                }
+
+                if (propositionResult.length > 0) {
+                    const proposer_id = propositionResult[0].proposer_id;
+                    const title = propositionResult[0].title;
+
+                    // 🔥 Étape 4 : Enregistrer la notification avec le nom et non l'ID
+                    const insertNotifSQL = `
+                        INSERT INTO notifications (user_id, type, message, related_entity_id) 
+                        VALUES (?, ?, ?, ?)
+                    `;
+
+                    const notifMessage = `${interested_user_name} est intéressé(e) par votre offre : ${title}`;
+
+                    con.query(insertNotifSQL, [proposer_id, "interest_request", notifMessage, interestId], (err, notifResult) => {
+                        if (err) {
+                            console.error("Erreur lors de l'insertion de la notification :", err);
+                            return res.status(500).json({ error: "Erreur interne du serveur" });
+                        }
+
+                        // 🔥 Étape 5 : Émettre la notification en temps réel avec `type`
+                        const io = req.app.get("socketio");
+                        console.log("📡 Emission WebSocket : notification envoyée à", proposer_id);
+                        io.emit(`notification-${proposer_id}`, { 
+                            id: notifResult.insertId,  // 🔥 Ajout de l'ID pour permettre la suppression
+                            message: notifMessage,
+                            related_entity_id: interestId,
+                            type: "interest_request"  // 🔥 Ajout du type pour éviter l'erreur dans le front
+                        });                        
+                        console.log("✅ WebSocket émis !");
+                        res.status(201).json({ message: "Demande d'intérêt envoyée avec succès." });
+                    });
+                } else {
+                    res.status(404).json({ error: "Proposition non trouvée." });
+                }
+            });
+        });
+    });
+});
+// modifier un intérêt existant par son ID.
+//Envoie une notification en temps réel à l’intéressé quand sa demande est acceptée ou refusée.
+//utiliser con au lieu de db
+// 🔥 Modifier un intérêt (acceptation/refus) + Notifier en temps réel l'intéressé
+app.put('/interests/:id', (req, res) => {
+    const { status } = req.body;
+    const { id } = req.params;
+
+    if (!["accepted", "rejected"].includes(status)) {
+        return res.status(400).json({ error: "Statut invalide." });
+    }
+
+    // Mettre à jour le statut
+    con.query("UPDATE interests SET status = ? WHERE id = ?", [status, id], (err, result) => {
+        if (err) {
+            console.error("Erreur SQL lors de la mise à jour de la demande :", err);
+            return res.status(500).json({ error: "Erreur serveur" });
+        }
+
+        // 🔥 Étape 1 : Récupérer les infos de la demande
+        con.query("SELECT interested_user_id, proposition_id FROM interests WHERE id = ?", [id], (err, interestResults) => {
+            if (err || interestResults.length === 0) {
+                console.error("Erreur SQL lors de la récupération de la demande :", err);
+                return res.status(500).json({ error: "Erreur serveur" });
+            }
+
+            const interested_user_id = interestResults[0].interested_user_id;
+            const proposition_id = interestResults[0].proposition_id;
+
+            // 🔥 Étape 2 : Récupérer les infos du proposeur
+            con.query("SELECT proposer_id FROM propositions WHERE id = ?", [proposition_id], (err, proposerResults) => {
+                if (err || proposerResults.length === 0) {
+                    console.error("Erreur SQL lors de la récupération du proposeur :", err);
+                    return res.status(500).json({ error: "Erreur serveur" });
+                }
+
+                const proposer_id = proposerResults[0].proposer_id;
+
+                con.query("SELECT name, email, phone_number FROM users WHERE id = ?", [proposer_id], (err, proposerData) => {
+                    if (err || proposerData.length === 0) {
+                        console.error("Erreur SQL lors de la récupération des infos du proposeur :", err);
+                        return res.status(500).json({ error: "Erreur serveur" });
+                    }
+
+                    const proposer_name = proposerData[0].name;
+                    const proposer_email = proposerData[0].email;
+                    const proposer_phone = proposerData[0].phone_number;
+
+                    // 🔥 Construire le message en fonction du statut
+                    const message = status === "accepted"
+                        ? `🎉 ${proposer_name} a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 ${proposer_email} 📞 ${proposer_phone}`
+                        : `❌ ${proposer_name} a refusé votre demande pour \"Nettoyage de printemps\".`;
+
+                    // 🔥 Étape 3 : Enregistrer la notification avec l'ID
+                    con.query("INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
+                        [interested_user_id, `interest_${status}`, message, proposition_id], (err, notifResult) => {
+                            if (err) {
+                                console.error("Erreur SQL lors de l'ajout de la notification :", err);
+                                return res.status(500).json({ error: "Erreur serveur" });
+                            }
+
+                            const insertedNotifId = notifResult.insertId;
+
+                            // 🔥 Étape 4 : Envoyer la notification en temps réel
+                            const io = req.app.get("socketio");
+                            io.emit(`notification-${interested_user_id}`, { 
+                                id: insertedNotifId, 
+                                message, 
+                                related_entity_id: proposition_id,
+                                type: `interest_${status}`
+                            });
+
+                            res.json({ message: `Demande ${status} avec succès.` });
+                    });
+                });
+            });
+        });
+    });
+});
 app.get("/interests/received/:id", (req, res) => {
     /*
     C’est ce que fait la route /interests/received/:id.
@@ -516,9 +1127,7 @@ app.get("/interests/received/:id", (req, res) => {
         }
 
         if (results.length === 0) {
-            return res.status(404).json({
-                error: "No interests received by the user."
-            });
+            return res.json([]); // 🔥 Retourne une liste vide au lieu d'une erreur 404
         }
 
         res.json({
@@ -527,6 +1136,125 @@ app.get("/interests/received/:id", (req, res) => {
         });
     });
 });
+
+app.put("/interests/users/:id", (req, res) => {
+    const userId = req.params.id;
+    const { start_date, end_date, status } = req.body;
+
+    if (!start_date && !end_date && !status) {
+        return res.status(400).json({
+            error: "No fields provided to update."
+        });
+    }
+
+    let fields = [];
+    let values = [];
+    if (start_date) {
+        fields.push("start_date = ?");
+        values.push(start_date);
+    }
+    if (end_date) {
+        fields.push("end_date = ?");
+        values.push(end_date);
+    }
+    if (status) {
+        fields.push("status = ?");
+        values.push(status);
+    }
+
+    values.push(userId);
+
+    const query = `
+        UPDATE interests
+        SET ${fields.join(", ")}, updated_at = NOW()
+        WHERE interested_user_id = ?
+    `;
+
+    con.query(query, values, (err, results) => {
+        if (err) {
+            console.error("Error updating interests for user:", err);
+            return res.status(500).json({
+                error: "An error occurred while updating the interests for the user."
+            });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({
+                error: "No interests found for this user."
+            });
+        }
+
+        res.json({
+            message: "Interests successfully updated for the user",
+            updatedFields: { start_date, end_date, status }
+        });
+    });
+});
+
+app.delete("/interests/users/:id", (req, res) => {
+    const userId = req.params.id;
+
+    if (!userId) {
+        return res.status(400).json({ error: "User ID is required." });
+    }
+
+    const query = `DELETE FROM interests WHERE interested_user_id = ?`;
+
+    con.query(query, [userId], (err, results) => {
+        if (err) {
+            console.error("Error deleting interests for user:", err);
+            return res.status(500).json({
+                error: "An error occurred while deleting the interests for the user."
+            });
+        }
+
+        if (results.affectedRows === 0) {
+            return res.status(404).json({
+                error: "No interests found for this user."
+            });
+        }
+
+        res.json({
+            message: "Interests successfully deleted for the user",
+            deletedCount: results.affectedRows
+        });
+    });
+});
+
+
+// 🔥 Récupérer les demandes envoyées par l'utilisateur (avec email et numéro du proposeur)
+app.get('/interests/sent/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    const getSentInterestsSQL = `
+        SELECT i.id, i.status, p.title AS proposition_title, 
+               u.email AS proposer_email, u.phone_number AS proposer_phone
+        FROM interests i
+        JOIN propositions p ON i.proposition_id = p.id
+        JOIN users u ON p.proposer_id = u.id
+        WHERE i.interested_user_id = ?
+    `;
+
+    con.query(getSentInterestsSQL, [userId], (err, results) => {
+        if (err) {
+            console.error("Erreur lors de la récupération des demandes envoyées :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur" });
+        }
+
+        // 🔥 Reformater la réponse pour structurer correctement les contacts
+        const formattedResults = results.map(interest => ({
+            ...interest,
+            proposer_contact: {
+                email: interest.proposer_email,
+                phone: interest.proposer_phone
+            }
+        }));
+
+        res.json({ data: formattedResults });
+    });
+});
+
+//--------------------UTILISATEURS---------------------
 
 // Récupérer les coordonnées d'un utilisateur par ID
 app.get("/users/:id/contact", (req, res) => {
@@ -558,40 +1286,135 @@ app.get("/users/:id/contact", (req, res) => {
         });
     });
 });
-// Route pour récupérer les propositions d'un utilisateur spécifique
-app.get("/propositions/users/:id", (req, res) => {
-    const userId = req.params.id; // ID de l'utilisateur connecté
+
+app.get("/users", (req, res) => {
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
 
     const query = `
-        SELECT p.id, p.category_id, p.proposer_id, p.title, p.description, p.is_active, p.created_at, p.updated_at,
-               c.service_type AS category_name
-        FROM propositions p
-        JOIN categories c ON p.category_id = c.id
-        WHERE p.proposer_id = ?
+        SELECT id, name, email, phone_number, role, city_id, created_at, updated_at
+        FROM users
+        LIMIT ? OFFSET ?
     `;
 
-    con.query(query, [userId], (err, results) => {
+    con.query(query, [parseInt(limit), parseInt(offset)], (err, results) => {
         if (err) {
-            console.error("Error fetching propositions:", err);
-            return res.status(500).json({ error: "An error occurred while fetching user propositions." });
-        }
-
-        if (results.length === 0) {
-            return res.status(404).json({ error: "No propositions found for this user." });
+            console.error("Error fetching users:", err);
+            return res.status(500).json({
+                error: "An error occurred while fetching users."
+            });
         }
 
         res.json({
-            message: "Here are the propositions for the user",
-            data: results
+            message: "Here are the users",
+            data: results,
+            pagination: {
+                currentPage: parseInt(page),
+                itemsPerPage: parseInt(limit)
+            }
         });
     });
 });
+
+//--------------------NOTIFS---------------------
+
+
+//  Créer une Notification (à appeler lorsqu’une demande d’intérêt est envoyée ou acceptée/refusée)
+app.post("/notifications", (req, res) => {
+    const { user_id, type, message, related_entity_id } = req.body;
+
+    if (!user_id || !type || !message) {
+        return res.status(400).json({ error: "Champs obligatoires manquants." });
+    }
+
+    const insertNotificationQuery = `
+        INSERT INTO notifications (user_id, type, message, related_entity_id, created_at)
+        VALUES (?, ?, ?, ?, NOW())
+    `;
+
+    con.query(insertNotificationQuery, [user_id, type, message, related_entity_id], (err, result) => {
+        if (err) return res.status(500).json({ error: "Erreur serveur lors de l'ajout de la notification." });
+
+        const notificationData = {
+            id: result.insertId,
+            user_id,
+            type,
+            message,
+            related_entity_id,
+        };
+
+        io.emit(`notification_${user_id}`, notificationData); // 🔥 Envoie la notif en temps réel
+        res.status(201).json({ message: "Notification envoyée avec succès.", notificationData });
+    });
+});
+
+app.get('/notifications/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    if (!userId) {
+        return res.status(400).json({ error: "userId est requis." });
+    }
+
+    const sql = "SELECT * FROM notifications WHERE user_id = ?";
+    con.query(sql, [userId], (err, result) => {
+        if (err) {
+            console.error("Erreur récupération des notifications :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur." });
+        }
+
+        if (result.length === 0) {
+            return res.json([]); // 🔥 Retourne une liste vide au lieu d'une erreur 404
+        }
+
+        res.json(result);
+    });
+});
+
+// 🔥 Supprimer une notification par ID
+app.delete('/notifications/:id', (req, res) => {
+    const notificationId = req.params.id;
+
+    const deleteNotifSQL = `DELETE FROM notifications WHERE id = ?`;
+
+    con.query(deleteNotifSQL, [notificationId], (err, result) => {
+        if (err) {
+            console.error("Erreur lors de la suppression de la notification :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur" });
+        }
+
+        if (result.affectedRows > 0) {
+            console.log(`🗑️ Notification ${notificationId} supprimée.`);
+            res.json({ message: "Notification supprimée avec succès." });
+        } else {
+            res.status(404).json({ error: "Notification non trouvée." });
+        }
+    });
+});
+
+// 🔥 Supprimer toutes les notifications d'un utilisateur
+app.delete('/notifications/all/:userId', (req, res) => {
+    const userId = req.params.userId;
+
+    const deleteAllNotifSQL = `DELETE FROM notifications WHERE user_id = ?`;
+
+    con.query(deleteAllNotifSQL, [userId], (err, result) => {
+        if (err) {
+            console.error("Erreur lors de la suppression des notifications :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur" });
+        }
+
+        console.log(`🗑️ Toutes les notifications de l'utilisateur ${userId} supprimées.`);
+        res.json({ message: "Toutes les notifications ont été supprimées." });
+    });
+});
+
+
 
 
 // Démarrer le serveur
 if (require.main === module) {
     app.listen(PORT, () => {
-        console.log(`Serveur en écoute sur http://localhost:${PORT}`);
+        console.log(`🚀Serveur en écoute sur http://localhost:${PORT}`);
     });
 }
 
