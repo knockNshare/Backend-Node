@@ -1,13 +1,13 @@
--- MySQL dump 10.13  Distrib 9.1.0, for macos15.2 (arm64)
+-- MySQL dump 10.13  Distrib 8.0.41, for Win64 (x86_64)
 --
 -- Host: localhost    Database: projets_devops
 -- ------------------------------------------------------
--- Server version	9.1.0
+-- Server version	8.0.41
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8mb4 */;
+/*!50503 SET NAMES utf8 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -225,7 +225,7 @@ CREATE TABLE `notifications` (
 
 LOCK TABLES `notifications` WRITE;
 /*!40000 ALTER TABLE `notifications` DISABLE KEYS */;
-INSERT INTO `notifications` VALUES (9,6,'interest_accepted','Votre demande a été acceptée ! Vous pouvez contacter le proposeur.',3,'2025-01-18 10:37:14'),(10,6,'interest_accepted','Votre demande pour \"Nettoyage de printemps\" a été acceptée ????.',1,'2025-01-18 10:37:14'),(48,7,'interest_rejected','❌ Marie Martin, Nettoyage de printemps a été refusée par 5.',3,'2025-01-18 14:48:05'),(53,8,'interest_accepted','???? hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : ???? hanat@live.fr ???? 3630',3,'2025-01-18 15:31:34'),(54,8,'interest_accepted','???? hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : ???? hanat@live.fr',3,'2025-01-18 15:35:58'),(58,8,'interest_accepted','???? hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : ???? hanat@live.fr',3,'2025-01-18 15:43:27'),(59,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',41,'2025-02-22 12:34:43');
+INSERT INTO `notifications` VALUES (9,6,'interest_accepted','Votre demande a été acceptée ! Vous pouvez contacter le proposeur.',3,'2025-01-18 10:37:14'),(10,6,'interest_accepted','Votre demande pour \"Nettoyage de printemps\" a été acceptée 🎉.',1,'2025-01-18 10:37:14'),(48,7,'interest_rejected','❌ Marie Martin, Nettoyage de printemps a été refusée par 5.',3,'2025-01-18 14:48:05'),(50,5,'interest_request','Marie Martin est intéressé(e) par votre offre : Nettoyage de printemps',36,'2025-01-18 15:04:37'),(51,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',37,'2025-01-18 15:05:10'),(53,8,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr 📞 3630',3,'2025-01-18 15:31:34'),(54,8,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr',3,'2025-01-18 15:35:58'),(55,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',38,'2025-01-18 15:37:21'),(56,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',39,'2025-01-18 15:38:06'),(57,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',40,'2025-01-18 15:43:11'),(58,8,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr',3,'2025-01-18 15:43:27');
 /*!40000 ALTER TABLE `notifications` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -307,7 +307,7 @@ CREATE TABLE `project_votes` (
   KEY `project_id` (`project_id`),
   CONSTRAINT `project_votes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `project_votes_ibfk_2` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -316,6 +316,7 @@ CREATE TABLE `project_votes` (
 
 LOCK TABLES `project_votes` WRITE;
 /*!40000 ALTER TABLE `project_votes` DISABLE KEYS */;
+INSERT INTO `project_votes` VALUES (17,8,3,'up','2025-02-22 21:17:43');
 /*!40000 ALTER TABLE `project_votes` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -338,7 +339,7 @@ CREATE TABLE `projects` (
   PRIMARY KEY (`id`),
   KEY `author_id` (`author_id`),
   CONSTRAINT `projects_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -347,7 +348,7 @@ CREATE TABLE `projects` (
 
 LOCK TABLES `projects` WRITE;
 /*!40000 ALTER TABLE `projects` DISABLE KEYS */;
-INSERT INTO `projects` VALUES (3,'Collecte de denrées.','Le projet de collecte de denrées a pour but de...','Collecte',7,'2025-02-21 22:00:06','2025-04-05 22:00:00','En cours');
+INSERT INTO `projects` VALUES (3,'Collecte de denrées.','Le projet de collecte de denrées a pour but de...','Collecte',7,'2025-02-21 22:00:06','2025-04-05 22:00:00','En cours'),(4,'Mon Projet','Projet de Pierre','Rénovation',8,'2025-02-22 21:15:40','2025-02-26 23:00:00','En cours');
 /*!40000 ALTER TABLE `projects` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -482,36 +483,9 @@ LOCK TABLES `users` WRITE;
 INSERT INTO `users` VALUES (1,'ouragh','hana@live.fr','Inscription92!','resident','2025-01-16 11:48:04','2025-01-16 11:48:04','3630',75001),(4,'hana','hanatest@live.fr','Test123!','resident','2025-01-16 11:59:53','2025-01-16 11:59:53','3630',75001),(5,'hana','hanat@live.fr','Test123!','resident','2025-01-16 12:08:49','2025-01-16 12:08:49','3630',75001),(6,'Jean Dupont','jean.dupont@email.com','password123','resident','2025-01-16 12:23:17','2025-01-16 12:23:17','0601234567',75001),(7,'Marie Martin','marie.martin@email.com','secret456','service_provider','2025-01-16 12:23:17','2025-01-16 12:23:17','0612345678',69001),(8,'Pierre Lefevre','pierre.lefevre@email.com','topsecret789','administrator','2025-01-16 12:23:17','2025-01-16 12:23:17','0623456789',75001);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `votes`
---
-
-DROP TABLE IF EXISTS `votes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `votes` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `user_id` int NOT NULL,
-  `project_id` int NOT NULL,
-  `vote` varchar(10) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
-  KEY `project_id` (`project_id`),
-  CONSTRAINT `votes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `votes_ibfk_2` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `votes`
---
-
-LOCK TABLES `votes` WRITE;
-/*!40000 ALTER TABLE `votes` DISABLE KEYS */;
-/*!40000 ALTER TABLE `votes` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+DROP TABLE IF EXISTS `votes`;  
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
@@ -521,4 +495,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-02-22 13:19:01
+-- Dump completed on 2025-02-22 22:34:16

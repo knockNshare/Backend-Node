@@ -641,6 +641,7 @@ app.post('/api/projects/:id/vote', (req, res) => {
     const projectId = req.params.id;
 
     if (!user_id || !vote || !['up', 'down'].includes(vote)) {
+        console.log("⚠️ Requête invalide :", req.body);
         return res.status(400).json({ error: "Requête invalide." });
     }
 
