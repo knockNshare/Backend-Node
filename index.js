@@ -44,7 +44,7 @@ io.on("connection", (socket) => {
     });
 });
 
-// Lancer le serveur WebSocket
+// Lancement du serveur WebSocket
 server.listen(5001, () => {
     console.log("✅ Serveur WebSocket démarré sur le port 5001");
 });
@@ -71,7 +71,7 @@ con.connect(function(err) {
     console.log("Connected to the database!");
 });
 
-// API Endpoints
+//-----------API Endpoints pour le TEST-----------
 app.get('/', (req, res) => {
     res.send('Bienvenue clara dans l API !');
 });
@@ -83,6 +83,8 @@ app.get('/api/hello', (req, res) => {
 app.get("/get", (req,res) =>{
     res.json({message: "Voici les données"});
 });
+
+
 // Route pour l'inscription
 app.post('/api/signup', (req, res) => {
     const { name, email, phone_number, password, city_id } = req.body;
@@ -1555,6 +1557,76 @@ app.delete('/notifications/all/:userId', (req, res) => {
 });
 
 //------------------------------SIGNALEMENTS------------------------------------
+
+// Ajout d'un signalement
+app.post('/signalements', (req, res) => {
+    const { user_id, categorie, description, critique, quartier } = req.body;
+
+    if (!user_id || !categorie || !description) {
+        return res.status(400).json({ error: "Tous les champs obligatoires ne sont pas remplis." });
+    }
+
+    const sql = `INSERT INTO signalements (user_id, categorie, description, critique, quartier) VALUES (?, ?, ?, ?, ?)`;
+    con.query(sql, [user_id, categorie, description, critique, quartier], (err, result) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur." });
+        }
+
+        // ✅ Envoi de notification si critique
+        if (critique) {
+            const notifMessage = `⚠️ Danger critique signalé par l’utilisateur ${user_id} : ${description}`;
+            con.query(
+                "INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
+                [user_id, "danger_alert", notifMessage, result.insertId]
+            );
+            const io = req.app.get("socketio");
+            io.emit("notification-global", { message: notifMessage, type: "danger_alert" });
+        }
+
+        res.status(201).json({ message: "Signalement ajouté avec succès." });
+    });
+});
+
+//récupération de tous les signalements
+app.get('/signalements', (req, res) => {
+    const sql = `SELECT * FROM signalements ORDER BY date_creation DESC`;
+    con.query(sql, (err, results) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur." });
+        }
+        res.json({ signalements: results });
+    });
+});
+
+//récupérer les signalements d'un utilisateur spécifique, pour la rubrique "mes signalements"
+app.get('/signalements/user/:userId', (req, res) => {
+    const { userId } = req.params;
+    const sql = `SELECT * FROM signalements WHERE user_id = ? ORDER BY date_creation DESC`;
+
+    con.query(sql, [userId], (err, results) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur." });
+        }
+        res.json({ signalements: results });
+    });
+});
+
+//résoudre un signalement (le fermer)
+app.put('/signalements/:id/resoudre', (req, res) => {
+    const { id } = req.params;
+
+    const sql = `UPDATE signalements SET resolu = TRUE WHERE id = ?`;
+    con.query(sql, [id], (err, result) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur interne du serveur." });
+        }
+        res.json({ message: "Signalement marqué comme résolu." });
+    });
+});
 
 
 
