@@ -259,8 +259,7 @@ app.get('/api/events/search', (req, res) => {
             return res.status(200).json(matchedEvents);
         }
 
-        // If no keyword is provided, return the filtered events directly
-        console.log("🟢 Filtered events found:", results);
+        console.log("🟢 Filtered events IDs found:", results.map(event => event.id));
         res.status(200).json(results);
     });
 });
@@ -553,6 +552,156 @@ app.delete('/api/events/leave', (req, res) => {
 });
 
 //--------------------FIN_EVENTS---------------------
+
+//--------------------PROJECTS-------------------------
+
+
+// Créer un projet
+app.post('/api/projects', (req, res) => {
+    const { title, description, category, author_id, deadline } = req.body;
+
+    if (!title || !description || !category || !author_id || !deadline) {
+        return res.status(400).json({ error: "Tous les champs sont obligatoires." });
+    }
+
+    const sql = `
+        INSERT INTO projects (title, description, category, author_id, deadline)
+        VALUES (?, ?, ?, ?, ?)
+    `;
+
+    con.query(sql, [title, description, category, author_id, deadline], (err, result) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur serveur lors de la création du projet." });
+        }
+        res.status(201).json({ message: "Projet créé avec succès", project_id: result.insertId });
+    });
+});
+
+
+
+// Récupérer tous les projets
+app.get('/api/projects', (req, res) => {
+    const sql = `
+        SELECT p.*, u.name AS author_name,
+               (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'up') AS up_votes,
+               (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'down') AS down_votes
+        FROM projects p
+        JOIN users u ON p.author_id = u.id
+        ORDER BY p.created_at DESC
+    `;
+
+    con.query(sql, (err, results) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur lors de la récupération des projets." });
+        }
+        res.json(results);
+    });
+});
+
+
+
+// Détails d'un projet par son ID
+app.get('/api/projects/:id', (req, res) => {
+    const projectId = req.params.id;
+
+    const sql = `
+        SELECT p.*, u.name AS author_name,
+               (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'up') AS up_votes,
+               (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'down') AS down_votes
+        FROM projects p
+        JOIN users u ON p.author_id = u.id
+        WHERE p.id = ?
+    `;
+
+    con.query(sql, [projectId], (err, results) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur lors de la récupération du projet." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Projet introuvable." });
+        }
+
+        res.json(results[0]);
+    });
+});
+
+
+// Voter sur un projet
+app.post('/api/projects/:id/vote', (req, res) => {
+    const { user_id, vote } = req.body;
+    const projectId = req.params.id;
+
+    if (!user_id || !vote || !['up', 'down'].includes(vote)) {
+        return res.status(400).json({ error: "Requête invalide." });
+    }
+
+    // Vérifier que l'utilisateur n'est pas le créateur du projet
+    con.query("SELECT author_id FROM projects WHERE id = ?", [projectId], (err, results) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur serveur." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Projet introuvable." });
+        }
+
+        if (results[0].author_id === user_id) {
+            return res.status(403).json({ error: "Vous ne pouvez pas voter sur votre propre projet." });
+        }
+
+        // Vérifier si l'utilisateur a déjà voté
+        con.query("SELECT * FROM project_votes WHERE user_id = ? AND project_id = ?", [user_id, projectId], (err, voteResults) => {
+            if (err) {
+                console.error("Erreur SQL :", err);
+                return res.status(500).json({ error: "Erreur serveur." });
+            }
+
+            if (voteResults.length > 0) {
+                // Si l'utilisateur a déjà voté, supprimer son vote si c'est le même ou le modifier si c'est différent
+                if (voteResults[0].vote === vote) {
+                    con.query("DELETE FROM project_votes WHERE user_id = ? AND project_id = ?", [user_id, projectId], (err) => {
+                        if (err) return res.status(500).json({ error: "Erreur serveur." });
+                        return res.status(200).json({ message: "Votre vote a été retiré." });
+                    });
+                } else {
+                    con.query("UPDATE project_votes SET vote = ? WHERE user_id = ? AND project_id = ?", [vote, user_id, projectId], (err) => {
+                        if (err) return res.status(500).json({ error: "Erreur serveur." });
+                        return res.status(200).json({ message: "Votre vote a été mis à jour." });
+                    });
+                }
+            } else {
+                // Ajouter un nouveau vote
+                con.query("INSERT INTO project_votes (user_id, project_id, vote) VALUES (?, ?, ?)", [user_id, projectId, vote], (err) => {
+                    if (err) return res.status(500).json({ error: "Erreur serveur." });
+                    return res.status(201).json({ message: "Vote enregistré avec succès." });
+                });
+            }
+        });
+    });
+});
+
+
+
+
+
+
+
+
+
+//--------------------FIN_PROJECTS---------------------
+
+
+
+
+
+
+
+
 
 //--------------------CATEGORIES---------------------
 

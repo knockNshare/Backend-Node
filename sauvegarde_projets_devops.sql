@@ -1,13 +1,13 @@
--- MySQL dump 10.13  Distrib 9.0.1, for macos15.1 (arm64)
+-- MySQL dump 10.13  Distrib 8.0.41, for Win64 (x86_64)
 --
 -- Host: localhost    Database: projets_devops
 -- ------------------------------------------------------
--- Server version	9.0.1
+-- Server version	8.0.41
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8mb4 */;
+/*!50503 SET NAMES utf8 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -122,7 +122,7 @@ CREATE TABLE `events` (
   KEY `city_id` (`city_id`),
   CONSTRAINT `events_city_fk` FOREIGN KEY (`city_id`) REFERENCES `cities` (`id`),
   CONSTRAINT `events_ibfk_1` FOREIGN KEY (`creator_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -131,17 +131,8 @@ CREATE TABLE `events` (
 
 LOCK TABLES `events` WRITE;
 /*!40000 ALTER TABLE `events` DISABLE KEYS */;
-
-
--- Updated INSERT statements
-INSERT INTO `events` (id, title, description, date, address, city_id, creator_id, created_at, updated_at, category, imageURL) 
-VALUES 
-(1,'brocante','brocante','2025-01-16 12:42:00','14 Rue Chaillon',13001,1,'2025-01-16 12:42:32','2025-01-19 17:03:41','Réunion',''),
-(2,'brocante','bc','2025-01-16 13:20:00','14 Rue Chaillon',69001,2,'2025-01-16 13:20:43','2025-01-19 17:03:41','Réunion',''),
-(10,'TEST','TEST','2012-12-15 12:12:00','15 place de Paris',75001,1,'2025-01-19 15:26:11','2025-01-19 16:51:41','Fête','https://us-en-vexin.fr/wp-content/uploads/2020/03/brocante.jpg');
-
+INSERT INTO `events` VALUES (1,'brocante','brocante','2025-01-16 12:42:00','14 Rue Chaillon',13001,1,'2025-01-16 12:42:32','2025-01-19 18:47:05','Barbecue',''),(2,'brocante','bc','2025-01-16 13:20:00','14 Rue Chaillon',69001,2,'2025-01-16 13:20:43','2025-01-19 17:03:41','Réunion',''),(10,'TEST','TEST','2012-12-15 12:12:00','15 place de Paris',75001,1,'2025-01-19 15:26:11','2025-01-19 16:51:41','Fête','https://us-en-vexin.fr/wp-content/uploads/2020/03/brocante.jpg');
 /*!40000 ALTER TABLE `events` ENABLE KEYS */;
-
 UNLOCK TABLES;
 
 --
@@ -270,6 +261,65 @@ LOCK TABLES `participants` WRITE;
 UNLOCK TABLES;
 
 --
+-- Table structure for table `project_members`
+--
+
+DROP TABLE IF EXISTS `project_members`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_members` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `project_id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `role` varchar(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `project_id` (`project_id`),
+  KEY `user_id` (`user_id`),
+  CONSTRAINT `project_members_ibfk_1` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `project_members_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_members`
+--
+
+LOCK TABLES `project_members` WRITE;
+/*!40000 ALTER TABLE `project_members` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_members` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `project_votes`
+--
+
+DROP TABLE IF EXISTS `project_votes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `project_votes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `project_id` int NOT NULL,
+  `vote` enum('up','down') NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_vote` (`user_id`,`project_id`),
+  KEY `project_id` (`project_id`),
+  CONSTRAINT `project_votes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `project_votes_ibfk_2` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `project_votes`
+--
+
+LOCK TABLES `project_votes` WRITE;
+/*!40000 ALTER TABLE `project_votes` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_votes` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `projects`
 --
 
@@ -280,13 +330,15 @@ CREATE TABLE `projects` (
   `id` int NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
   `description` text NOT NULL,
-  `status` varchar(50) NOT NULL,
-  `proposer_id` int NOT NULL,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `category` varchar(100) NOT NULL,
+  `author_id` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `deadline` timestamp NOT NULL,
+  `status` enum('En cours','Terminé','Suspendu','Annulé') DEFAULT 'En cours',
   PRIMARY KEY (`id`),
-  KEY `proposer_id` (`proposer_id`),
-  CONSTRAINT `projects_ibfk_1` FOREIGN KEY (`proposer_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  KEY `author_id` (`author_id`),
+  CONSTRAINT `projects_ibfk_1` FOREIGN KEY (`author_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -295,6 +347,7 @@ CREATE TABLE `projects` (
 
 LOCK TABLES `projects` WRITE;
 /*!40000 ALTER TABLE `projects` DISABLE KEYS */;
+INSERT INTO `projects` VALUES (3,'Collecte de denrées.','Le projet de collecte de denrées a pour but de...','Collecte',7,'2025-02-21 22:00:06','2025-04-05 22:00:00','En cours');
 /*!40000 ALTER TABLE `projects` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -319,7 +372,7 @@ CREATE TABLE `propositions` (
   KEY `proposer_id` (`proposer_id`),
   CONSTRAINT `propositions_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`),
   CONSTRAINT `propositions_ibfk_2` FOREIGN KEY (`proposer_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -398,35 +451,6 @@ LOCK TABLES `users` WRITE;
 INSERT INTO `users` VALUES (1,'ouragh','hana@live.fr','Inscription92!','resident','2025-01-16 11:48:04','2025-01-16 11:48:04','3630',75001),(4,'hana','hanatest@live.fr','Test123!','resident','2025-01-16 11:59:53','2025-01-16 11:59:53','3630',75001),(5,'hana','hanat@live.fr','Test123!','resident','2025-01-16 12:08:49','2025-01-16 12:08:49','3630',75001),(6,'Jean Dupont','jean.dupont@email.com','password123','resident','2025-01-16 12:23:17','2025-01-16 12:23:17','0601234567',75001),(7,'Marie Martin','marie.martin@email.com','secret456','service_provider','2025-01-16 12:23:17','2025-01-16 12:23:17','0612345678',69001),(8,'Pierre Lefevre','pierre.lefevre@email.com','topsecret789','administrator','2025-01-16 12:23:17','2025-01-16 12:23:17','0623456789',75001);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
-
---
--- Table structure for table `votes`
---
-
-DROP TABLE IF EXISTS `votes`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `votes` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `user_id` int NOT NULL,
-  `project_id` int NOT NULL,
-  `vote` varchar(10) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `user_id` (`user_id`),
-  KEY `project_id` (`project_id`),
-  CONSTRAINT `votes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
-  CONSTRAINT `votes_ibfk_2` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `votes`
---
-
-LOCK TABLES `votes` WRITE;
-/*!40000 ALTER TABLE `votes` DISABLE KEYS */;
-/*!40000 ALTER TABLE `votes` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
@@ -437,4 +461,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-01-18 16:35:23
+-- Dump completed on 2025-02-21 23:05:28
