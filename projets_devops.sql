@@ -202,7 +202,7 @@ DROP TABLE IF EXISTS `notifications`;
 CREATE TABLE `notifications` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
-  `type` enum('interest_request','interest_accepted','interest_rejected','message','event_update') NOT NULL,
+  `type` enum('interest_request','interest_accepted','interest_rejected','message','event_update','danger_alert') NOT NULL,
   `message` text NOT NULL,
   `related_entity_id` int DEFAULT NULL,
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -425,7 +425,7 @@ CREATE TABLE `signalements` (
   PRIMARY KEY (`id`),
   KEY `fk_user_signalement` (`user_id`),
   CONSTRAINT `fk_user_signalement` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -434,6 +434,7 @@ CREATE TABLE `signalements` (
 
 LOCK TABLES `signalements` WRITE;
 /*!40000 ALTER TABLE `signalements` DISABLE KEYS */;
+INSERT INTO `signalements` VALUES (1,'Dangers','Homme armé d\'un couteau, bâtiment A',0,'Batiment A','2025-02-22 14:33:55',1,5);
 /*!40000 ALTER TABLE `signalements` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -495,13 +496,4 @@ DROP TABLE IF EXISTS `votes`;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-02-22 13:19:01
-
-
-
-
-
-
-
-
-
+-- Dump completed on 2025-02-22 18:09:15
