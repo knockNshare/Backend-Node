@@ -1647,7 +1647,7 @@ app.post('/signalements', (req, res) => {
     if (!user_id || !categorie || !description) {
         return res.status(400).json({ error: "Tous les champs obligatoires ne sont pas remplis." });
     }
-
+    //avant ajout de websocket pour le temps réel
     const sql = `INSERT INTO signalements (user_id, categorie, description, critique, quartier) VALUES (?, ?, ?, ?, ?)`;
     con.query(sql, [user_id, categorie, description, critique, quartier], (err, result) => {
         if (err) {
