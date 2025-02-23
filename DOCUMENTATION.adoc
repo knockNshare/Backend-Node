@@ -409,3 +409,219 @@ L’application a été **remaniée graphiquement** pour une **meilleure expéri
 * **Notifications en temps réel** : Fonctionnent sans latence.
 * **Gestion des statuts (pending, accepted, rejected)** : Bien mise à jour en base.
 * **UI et UX fluides** : Interface réactive et intuitive.
+
+
+== Documentation v1.0 – Signalement de dangers
+v1.0, Février 2025
+:toc:
+:toc-title: Sommaire
+
+== 🎯 Introduction
+
+La fonctionnalité de **signalement de dangers** permet aux utilisateurs de **remonter en temps réel des incidents** dans leur quartier. Cette feature repose sur un **workflow rapide** et efficace pour assurer une réactivité maximale. 
+
+🚀 **Objectif** : Offrir une plateforme où les résidents peuvent signaler **instantanément** des problèmes de sécurité et autres nuisances, avec **des notifications en temps réel** via WebSockets.
+
+**Pourquoi cette feature ?**
+- 🏡 **Faciliter la communication locale** : les utilisateurs peuvent informer leurs voisins d’un danger potentiel.
+- ⏳ **Réactivité immédiate** : les signalements sont visibles immédiatement et les dangers critiques envoient une notification.
+- 📍 **Amélioration de la sécurité** : plus de transparence et de réactivité sur les incidents urbains.
+
+---
+
+== ⚙️ Fonctionnalités
+
+**📌 1. Section Signalement rapide**
+-Via un formulaire dédié, les utilisateurs peuvent signaler un problème en quelques clics :
+- Sélection d’une **catégorie** parmi : 
+  * **🚨 Dangers & Sécurité** (vol, bagarre, accident…)
+  * **🏚 Problèmes Urbains** (routes endommagées, lampadaires HS…)
+  * **🔊 Nuisances Sonores** (fête bruyante, klaxons…)
+  * **🚗 Problèmes de stationnement** (véhicule gênant, parking saturé…)
+- Description courte et **zone du quartier** concernée.
+- Option 🚨 **Critique** : Si activé par l'utilisateur lors de la saisie du formulaire, on envoie une notification immédiate aux résidents.
+
+**📌 2. Section pour l'affichage des signalements**
+- 🎯 Les **5 derniers signalements** sont visibles sur le **Dashboard**, mis à jour en temps réel.
+- 📋 A l'aide d'un bouton "voir plus", l'utilisateur peut voir en détail tous les signalements qui ont été faits, sur la **page dédiée aux signalements**.
+
+**📌 3. Ajout de notifications WebSockets pour signaler le danger**
+- **Si le signalement est critique**, une notification en **temps réel** est envoyée à **tous les utilisateurs**.
+- **Mise à jour automatique** du compteur de notifications.
+- **Pas besoin de recharger la page** : le signalement et les notifs sont **instantanément visibles**, ce qui permet à l'utilisateur de recevoir l'information sans faire d'effort particulier.
+
+**📌 4. Section Mes signalements**
+- Les utilisateurs peuvent consulter **tous leurs signalements** passés.
+- **Marquer un signalement comme résolu** pour indiquer que le problème a été traité.
+- Synchronisation avec la liste globale : Si l’alerte est résolue, elle apparaît aussi comme “résolue” pour tous.
+
+---
+
+== 🔄 **Workflow du signalement de danger**
+
+[plantuml, signalement_sequence, svg]
+----
+@startuml
+participant "Utilisateur" as UI
+participant "Frontend (React)" as FE
+participant "Backend API" as API
+participant "Base de Données" as DB
+participant "WebSockets" as WS
+participant "Autres utilisateurs" as USERS
+
+== 📩 1. Signalement d’un danger ==
+UI -> FE: Remplit le formulaire et valide
+FE -> API: **POST** /signalements (catégorie, description, critique…)
+API -> DB: 🔍 Enregistre le signalement
+DB --> API: ✅ OK
+
+== 🚨 2. Notification en temps réel si critique ==
+API -> WS: 📡 **Émettre une notification à tous les utilisateurs**
+WS --> USERS: 🔔 **Notification "Problème signalé"**
+USERS -> FE: **Mise à jour immédiate du compteur de notifications**
+
+== 📢 3. Mise à jour du tableau de bord ==
+API -> WS: **Mise à jour "Derniers signalements"**
+WS --> FE: 📡 Mettre à jour **sans recharger** 🔄
+
+== 👤 4. Gestion des signalements ==
+UI -> FE: Accède à "📜 Mes signalements"
+FE -> API: **GET** /signalements/utilisateur/{user_id}
+API -> DB: 🔍 Récupère les signalements de l’utilisateur
+DB --> API: 📋 Renvoie la liste
+API --> FE: Affichage des signalements
+
+== ✅ 5. Marquer un signalement comme résolu ==
+UI -> FE: Clique sur "✔️ Marquer comme résolu"
+FE -> API: **PUT** /signalements/:id/resoudre
+API -> DB: ✅ Met à jour le statut "Résolu"
+DB --> API: **OK**
+
+@enduml
+----
+
+---
+
+== 🛠 **Détails Techniques**
+
+📌 **Base de données**
+- **Table `signalements`** :
+  * `id` (INT, PRIMARY KEY)
+  * `user_id` (INT, FOREIGN KEY vers `users`)
+  * `categorie` (ENUM)
+  * `description` (TEXT)
+  * `critique` (BOOLEAN)
+  * `quartier` (TEXT)
+  * `resolu` (BOOLEAN, DEFAULT FALSE)
+  * `date_creation` (DATETIME, DEFAULT CURRENT_TIMESTAMP)
+
+- **Table `notifications`** (ajout du type `danger_alert`)
+  * `id`
+  * `user_id`
+  * `type` (ENUM)
+  * `message`
+  * `related_entity_id`
+  * `created_at`
+
+📌 **Backend API (Node.js, Express, MySQL)**
+- **POST** `/signalements` → Crée un nouveau signalement
+- **GET** `/signalements` → Récupère tous les signalements
+- **PUT** `/signalements/:id/resoudre` → Marque un signalement comme résolu
+- **WebSockets** : Notification temps réel via `io.emit("notification-global", {...})`
+
+📌 **Frontend (React)**
+- **Composants**
+  * `SignalementForm.jsx` → Formulaire de signalement
+  * `SignalementsList.jsx` → Affichage des signalements
+  * `Dashboard.jsx` → Intégration des signalements récents
+  * `Notifications.jsx` → Gestion des alertes en temps réel
+
+---
+
+== 📸 **Illustrations**
+📌 **Wireframe**
+image::images/wireframe_signalement.png[]
+
+📌 **Capture d’écran du site**
+image::images/signalements_dashboard.png[]
+
+---
+
+== 📊 Comparaison avec les plateformes existantes
+
+Notre solution se distingue par son approche **temps réel** et son **interface ultra-réactive**. Voici comment elle se positionne face aux alternatives existantes :
+
+[options="header"]
+|===
+| Plateforme | Type de signalement | Instantanéité des mises à jour | Notifications aux résidents | Suivi des signalements
+
+| *AlloVoisins / Nextdoor*
+| Discussions entre voisins, annonces de services
+| ❌ Non (les publications sont statiques)
+| ❌ Non (les notifications concernent uniquement des interactions sociales)
+| ❌ Non (pas de suivi des incidents)
+
+| *DansMaRue (Paris)*
+| Signalements urbains (voirie, éclairage public, etc.)
+| ❌ Non (validation requise par la mairie)
+| ❌ Non (aucune notification directe aux citoyens)
+| ✅ Oui (suivi possible après traitement)
+
+| *FixMyStreet*
+| Problèmes d’infrastructure (routes, mobilier urbain)
+| ❌ Non (mises à jour manuelles)
+| ❌ Non (seules les autorités locales reçoivent les alertes)
+| ✅ Oui (gestion par les services municipaux)
+
+| *Notre application* 🚀
+| Dangers, nuisances et incidents du quotidien
+| ✅ *Oui* (mise à jour automatique en temps réel)
+| ✅ *Oui* (alerte immédiate aux résidents en cas de danger critique)
+| ✅ *Oui* (gestion et résolution directe par les utilisateurs)
+|===
+
+== 🏆 Pourquoi nous sommes innovants ?
+
+💡 **Rapidité & Instantanéité**  
+Notre solution utilise **les WebSockets** pour une mise à jour immédiate des signalements et une **notification instantanée** aux résidents.
+
+🚀 **Autonomie des utilisateurs**  
+L’utilisateur **peut signaler, suivre et clôturer un incident** sans intervention administrative.
+
+🔔 **Notifications intelligentes**  
+Seuls les signalements *critiques* déclenchent une alerte pour éviter le spam tout en maintenant un haut niveau de réactivité.
+
+🖥 **Expérience utilisateur optimisée**  
+Interface fluide, ergonomique et conçue pour une utilisation rapide **depuis un mobile ou un desktop**.
+
+Notre application comble un **manque majeur** dans la gestion des signalements en quartiers : **l’instantanéité et l’autonomie des citoyens**.
+
+📝 **Conclusion** : Contrairement à d’autres plateformes, notre application offre **une communication rapide, directe et communautaire**.
+
+---
+
+== ✅ **Tests réalisés**
+- **Tests unitaires** : Vérification du bon enregistrement d’un signalement en base.
+- **Tests d’intégration** : Simulation d’une notification critique et validation de son affichage en WebSockets.
+- **Tests REST API** (Postman) :
+  * Envoi d’un signalement → **200 OK**
+  * Marquer un signalement comme résolu → **200 OK**
+  * Récupération des notifications en temps réel → **✅ Fonctionnel**
+
+---
+
+== 🚀 **Conclusion**
+🎯 **Bilan de la feature** :
+- **Instantanéité & efficacité** avec **WebSockets**.
+- **Expérience utilisateur fluide** (mise à jour automatique des signalements et notifications).
+- **Modularité & évolutivité** (possibilité d’ajouter des filtres par quartier, historique des signalements…).
+
+🔥 **Prochaines améliorations possibles** :
+- Ajouter une **cartographie** interactive des signalements.
+- Permettre aux utilisateurs de **commenter et réagir** aux signalements.
+- **Statistiques** sur les types de signalements les plus fréquents.
+- Ajouter le temps réel pour dire à tous les utilisateurs qu'un signalement est désormais terminé.
+
+---
+
+🚀 **Feature livrée avec succès !** 🎉
