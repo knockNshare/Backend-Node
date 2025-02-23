@@ -1738,9 +1738,9 @@ app.put('/signalements/:id/resoudre', (req, res) => {
     const { id } = req.params;
     const { user_id } = req.body; // Vérifie l'utilisateur
 
-    if (!user_id) {
-        return res.status(400).json({ error: "Utilisateur non identifié." });
-    }
+    // if (!user_id) {
+    //     return res.status(400).json({ error: "Utilisateur non identifié." });
+    // }
 
     const checkSql = `SELECT user_id FROM signalements WHERE id = ?`;
     con.query(checkSql, [id], (err, results) => {
@@ -1748,9 +1748,9 @@ app.put('/signalements/:id/resoudre', (req, res) => {
             return res.status(404).json({ error: "Signalement introuvable." });
         }
 
-        if (results[0].user_id !== user_id) {
-            return res.status(403).json({ error: "Vous ne pouvez pas résoudre un signalement qui ne vous appartient pas." });
-        }
+        // if (results[0].user_id !== user_id) {
+        //     return res.status(403).json({ error: "Vous ne pouvez pas résoudre un signalement qui ne vous appartient pas." });
+        // }
 
         const updateSql = `UPDATE signalements SET resolu = TRUE WHERE id = ?`;
         con.query(updateSql, [id], (err, result) => {
