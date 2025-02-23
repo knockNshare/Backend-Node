@@ -1649,7 +1649,6 @@ app.delete('/notifications/all/:userId', (req, res) => {
 
 //------------------------------SIGNALEMENTS------------------------------------
 
-// Ajout d'un signalement
 app.post('/signalements', (req, res) => {
     const { user_id, categorie, description, critique, quartier } = req.body;
 
@@ -1664,18 +1663,54 @@ app.post('/signalements', (req, res) => {
             return res.status(500).json({ error: "Erreur interne du serveur." });
         }
 
-        // ✅ Envoi de notification si critique
-        if (critique) {
-            const notifMessage = `⚠️ Danger critique signalé par l’utilisateur ${user_id} : ${description}`;
-            con.query(
-                "INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
-                [user_id, "danger_alert", notifMessage, result.insertId]
-            );
-            const io = req.app.get("socketio");
-            io.emit("notification-global", { message: notifMessage, type: "danger_alert" });
-        }
+        const newSignalement = {
+            id: result.insertId,
+            user_id,
+            categorie,
+            description,
+            critique,
+            quartier,
+            date_creation: new Date().toISOString()
+        };
 
-        res.status(201).json({ message: "Signalement ajouté avec succès." });
+        // ✅ Envoi en temps réel via WebSockets
+        const io = req.app.get("socketio");
+        io.emit("new-signalement", newSignalement);
+
+        // ✅ Envoi d'une notification si critique
+        if (critique) {
+            const notifMessage = `⚠️ Problème signalé dans votre quartier : ${description}`;
+
+            // Récupérer tous les utilisateurs
+            con.query("SELECT id FROM users", (err, users) => {
+                if (err) {
+                    console.error("Erreur récupération des utilisateurs :", err);
+                    return res.status(500).json({ error: "Erreur interne du serveur." });
+                }
+
+                users.forEach(user => {
+                    const userId = user.id;
+
+                    // Insérer une notification pour chaque utilisateur
+                    con.query(
+                        "INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
+                        [userId, "danger_alert", notifMessage, result.insertId]
+                    );
+
+                    // ✅ Envoyer la notification en temps réel
+                    io.to(`user_${userId}`).emit(`notification-${userId}`, {
+                        id: result.insertId,
+                        message: notifMessage,
+                        type: "danger_alert",
+                        related_entity_id: result.insertId
+                    });
+                });
+
+                res.status(201).json({ message: "Signalement ajouté avec succès et notification envoyée." });
+            });
+        } else {
+            res.status(201).json({ message: "Signalement ajouté avec succès." });
+        }
     });
 });
 
@@ -1692,7 +1727,7 @@ app.get('/signalements', (req, res) => {
 });
 
 //récupérer les signalements d'un utilisateur spécifique, pour la rubrique "mes signalements"
-app.get('/signalements/user/:userId', (req, res) => {
+app.get('/signalements/utilisateur/:userId', (req, res) => {
     const { userId } = req.params;
     const sql = `SELECT * FROM signalements WHERE user_id = ? ORDER BY date_creation DESC`;
 
@@ -1705,17 +1740,41 @@ app.get('/signalements/user/:userId', (req, res) => {
     });
 });
 
-//résoudre un signalement (le fermer)
+
+// Marquer un signalement comme résolu et le renvoyer mis à jour
 app.put('/signalements/:id/resoudre', (req, res) => {
     const { id } = req.params;
+    const { user_id } = req.body; // Vérifie l'utilisateur
 
-    const sql = `UPDATE signalements SET resolu = TRUE WHERE id = ?`;
-    con.query(sql, [id], (err, result) => {
-        if (err) {
-            console.error("Erreur SQL :", err);
-            return res.status(500).json({ error: "Erreur interne du serveur." });
+    // if (!user_id) {
+    //     return res.status(400).json({ error: "Utilisateur non identifié." });
+    // }
+
+    const checkSql = `SELECT user_id FROM signalements WHERE id = ?`;
+    con.query(checkSql, [id], (err, results) => {
+        if (err || results.length === 0) {
+            return res.status(404).json({ error: "Signalement introuvable." });
         }
-        res.json({ message: "Signalement marqué comme résolu." });
+
+        // if (results[0].user_id !== user_id) {
+        //     return res.status(403).json({ error: "Vous ne pouvez pas résoudre un signalement qui ne vous appartient pas." });
+        // }
+
+        const updateSql = `UPDATE signalements SET resolu = TRUE WHERE id = ?`;
+        con.query(updateSql, [id], (err, result) => {
+            if (err) {
+                console.error("Erreur SQL :", err);
+                return res.status(500).json({ error: "Erreur interne du serveur." });
+            }
+
+            // Récupérer le signalement mis à jour
+            con.query(`SELECT * FROM signalements WHERE id = ?`, [id], (err, updatedResults) => {
+                if (err) {
+                    return res.status(500).json({ error: "Erreur lors de la récupération du signalement mis à jour." });
+                }
+                res.json({ message: "Signalement marqué comme résolu.", signalement: updatedResults[0] });
+            });
+        });
     });
 });
 
