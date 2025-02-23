@@ -576,17 +576,25 @@ app.post('/api/projects', (req, res) => {
         return res.status(400).json({ error: "Tous les champs sont obligatoires." });
     }
 
-    const sql = `
-        INSERT INTO projects (title, description, category, author_id, deadline)
-        VALUES (?, ?, ?, ?, ?)
-    `;
+    // Récupérer le quartier de l'auteur
+    con.query("SELECT quartier_id FROM users WHERE id = ?", [author_id], (err, results) => {
+        if (err) return res.status(500).json({ error: "Erreur serveur." });
+        if (results.length === 0) return res.status(404).json({ error: "Utilisateur introuvable." });
 
-    con.query(sql, [title, description, category, author_id, deadline], (err, result) => {
-        if (err) {
-            console.error("Erreur SQL :", err);
-            return res.status(500).json({ error: "Erreur serveur lors de la création du projet." });
-        }
-        res.status(201).json({ message: "Projet créé avec succès", project_id: result.insertId });
+        const quartierId = results[0].quartier_id;
+
+        const sql = `
+            INSERT INTO projects (title, description, category, author_id, deadline, quartier_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `;
+
+        con.query(sql, [title, description, category, author_id, deadline, quartierId], (err, result) => {
+            if (err) {
+                console.error("Erreur SQL :", err);
+                return res.status(500).json({ error: "Erreur serveur lors de la création du projet." });
+            }
+            res.status(201).json({ message: "Projet créé avec succès", project_id: result.insertId });
+        });
     });
 });
 
@@ -650,25 +658,45 @@ app.put('/api/projects/:id', (req, res) => {
 
 
 
-// Récupérer tous les projets
+// Récupérer les projets (par défaut ceux du quartier de l'utilisateur, sauf si ?all=true)
 app.get('/api/projects', (req, res) => {
-    const sql = `
-        SELECT p.*, u.name AS author_name,
-               (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'up') AS up_votes,
-               (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'down') AS down_votes
-        FROM projects p
-        JOIN users u ON p.author_id = u.id
-        ORDER BY p.created_at DESC
-    `;
+    const { user_id, all } = req.query;
 
-    con.query(sql, (err, results) => {
-        if (err) {
-            console.error("Erreur SQL :", err);
-            return res.status(500).json({ error: "Erreur lors de la récupération des projets." });
+    if (!user_id) {
+        return res.status(400).json({ error: "user_id est requis." });
+    }
+
+    con.query("SELECT quartier_id FROM users WHERE id = ?", [user_id], (err, results) => {
+        if (err) return res.status(500).json({ error: "Erreur serveur." });
+        if (results.length === 0) return res.status(404).json({ error: "Utilisateur introuvable." });
+
+        const quartierId = results[0].quartier_id;
+
+        let sql = `
+            SELECT p.*, u.name AS author_name,
+                (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'up') AS up_votes,
+                (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'down') AS down_votes
+            FROM projects p
+            JOIN users u ON p.author_id = u.id
+        `;
+
+        // Appliquer le filtre par quartier si "all" n'est pas demandé
+        if (!all || all !== "true") {
+            sql += ` WHERE p.quartier_id = ${quartierId}`;
         }
-        res.json(results);
+
+        sql += ` ORDER BY p.created_at DESC`;
+
+        con.query(sql, (err, results) => {
+            if (err) {
+                console.error("Erreur SQL :", err);
+                return res.status(500).json({ error: "Erreur lors de la récupération des projets." });
+            }
+            res.json(results);
+        });
     });
 });
+
 
 
 
