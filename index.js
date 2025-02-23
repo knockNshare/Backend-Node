@@ -1658,24 +1658,36 @@ app.post('/signalements', (req, res) => {
         // ✅ Envoi d'une notification si critique
         if (critique) {
             const notifMessage = `⚠️ Problème signalé dans votre quartier : ${description}`;
-            con.query(
-                "INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
-                [user_id, "danger_alert", notifMessage, result.insertId],
-                (notifErr) => {
-                    if (notifErr) {
-                        console.error("Erreur lors de l'insertion de la notification :", notifErr);
-                        return res.status(500).json({ error: "Erreur interne lors de la création de la notification." });
-                    }
-
-                    // ✅ Envoyer la notif en temps réel via WebSockets
-                    const io = req.app.get("socketio");
-                    io.emit("notification-global", { message: notifMessage, type: "danger_alert" });
-
-                    res.status(201).json({ message: "Signalement ajouté avec succès et notification envoyée." });
+        
+            // Récupérer tous les utilisateurs
+            con.query("SELECT id FROM users", (err, users) => {
+                if (err) {
+                    console.error("Erreur récupération des utilisateurs :", err);
+                    return res.status(500).json({ error: "Erreur interne du serveur." });
                 }
-            );
-        } else {
-            res.status(201).json({ message: "Signalement ajouté avec succès." });
+        
+                const io = req.app.get("socketio");
+        
+                users.forEach(user => {
+                    const userId = user.id;
+        
+                    // Insérer une notification pour chaque utilisateur
+                    con.query(
+                        "INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
+                        [userId, "danger_alert", notifMessage, result.insertId]
+                    );
+        
+                    // ✅ Envoyer la notification en temps réel
+                    io.to(`user_${userId}`).emit(`notification-${userId}`, {
+                        id: result.insertId,
+                        message: notifMessage,
+                        type: "danger_alert",
+                        related_entity_id: result.insertId
+                    });
+                });
+        
+                res.status(201).json({ message: "Signalement ajouté avec succès et notification envoyée." });
+            });
         }
     });
 });
