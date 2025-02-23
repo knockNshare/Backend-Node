@@ -374,52 +374,30 @@ app.get('/api/events/user/:user_id', (req, res) => {
         });
     });
 });
-app.get('/api/events/region/:user_id', (req, res) => {
-    const userId = req.params.user_id;
-    const radius = 10; // Define the radius in kilometers (e.g., 10 km)
-    console.log(" I entered region");
-    // Query to get the user's city (latitude, longitude)
-    const sqlUserCity = 'SELECT c.latitude, c.longitude FROM users u JOIN cities c ON u.city_id = c.id WHERE u.id = ?';
+app.get('/api/events/region/:city_id', (req, res) => {
+    const cityId = req.params.city_id;
 
-    con.query(sqlUserCity, [userId], (err, userCity) => {
+    console.log("Fetching events for city:", cityId);
+
+    // Query to get events in the same city
+    const sqlEvents = 'SELECT * FROM events WHERE city_id = ?';
+
+    con.query(sqlEvents, [cityId], (err, events) => {
         if (err) {
-            console.error('Erreur SQL (user city):', err);
+            console.error('Erreur SQL (fetch events):', err);
             return res.status(500).json({ error: 'Erreur serveur' });
         }
 
-        if (userCity.length === 0) {
-            return res.status(404).json({ error: 'Utilisateur introuvable' });
+        // Instead of sending a 404 when no events are found, return an empty array
+        if (events.length === 0) {
+            return res.status(200).json([]);  // Return an empty array with status 200
         }
-
-        const userLat = userCity[0].latitude;
-        const userLon = userCity[0].longitude;
-        console.log("user localisation is",userLat,userLon);
-        // SQL query to find events within the given radius of the user's city
-        const sqlEventsInRegion = `
-            SELECT e.*, 
-                (6371 * acos(cos(radians(?)) * cos(radians(e.latitude)) * cos(radians(e.longitude) - radians(?)) + sin(radians(?)) * sin(radians(e.latitude)))) AS distance
-            FROM events e
-            HAVING distance <= ?
-            ORDER BY distance;
-        `;
-
-        // Query to get all events within the radius
-        con.query(sqlEventsInRegion, [userLat, userLon, userLat, radius], (err, events) => {
-            if (err) {
-                console.error('Erreur SQL (events in region):', err);
-                return res.status(500).json({ error: 'Erreur serveur' });
-            }
-
-            // If no events are found
-            if (events.length === 0) {
-                return res.status(404).json({ error: 'Aucun événement trouvé dans cette région' });
-            }
-
-            // Send the events as response
-            res.status(200).json(events);
-        });
+        console.log("events by region",events);
+        res.status(200).json(events);  // Return the events if they exist
     });
 });
+
+
 
 const getEventsByCity = async (city_id) => {
     // SQL query to retrieve events by city_id
@@ -1518,6 +1496,36 @@ app.get("/users/:id/contact", (req, res) => {
     });
 });
 
+// Récupérer le city id d'un utilisateur par ID
+app.get("/users/city/:id", (req, res) => {
+    const userId = req.params.id;
+
+    const query = `
+        SELECT city_id
+        FROM users
+        WHERE id = ?
+    `;
+
+    con.query(query, [userId], (err, results) => {
+        if (err) {
+            console.error("Erreur lors de la récupération de city id :", err);
+            return res.status(500).json({
+                error: "Une erreur est survenue lors de la  récupération de city id."
+            });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({
+                error: "Utilisateur non trouvé."
+            });
+        }
+
+        res.json({
+            message: "city id récupérées avec succès.",
+            data: results[0]
+        });
+    });
+});
 app.get("/users", (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
