@@ -1,13 +1,13 @@
--- MySQL dump 10.13  Distrib 8.0.41, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 9.1.0, for macos15.2 (arm64)
 --
 -- Host: localhost    Database: projets_devops
 -- ------------------------------------------------------
--- Server version	8.0.41
+-- Server version	9.1.0
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8 */;
+/*!50503 SET NAMES utf8mb4 */;
 /*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
 /*!40103 SET TIME_ZONE='+00:00' */;
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
@@ -37,6 +37,7 @@ CREATE TABLE `categories` (
 --
 -- Dumping data for table `categories`
 --
+
 LOCK TABLES `categories` WRITE;
 /*!40000 ALTER TABLE `categories` DISABLE KEYS */;
 INSERT INTO `categories` VALUES (1,'Cleaning','2025-01-16 12:23:17','2025-01-16 12:23:17',NULL),(2,'Repair','2025-01-16 12:23:17','2025-01-16 12:23:17',NULL),(3,'Rental','2025-01-16 12:23:17','2025-01-16 12:23:17',NULL);
@@ -47,29 +48,32 @@ UNLOCK TABLES;
 -- Table structure for table `cities`
 --
 
-/*!50503 SET character_set_client = utf8mb4 */;
 DROP TABLE IF EXISTS `cities`;
-
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `cities` (
-  `id` INT NOT NULL,  -- code commune,
-  `code_postal` INT NOT NULL,
-  `name` VARCHAR(255) NOT NULL,
-  `latitude` DECIMAL(9,6) ,
-  `longitude` DECIMAL(9,6) ,
-  PRIMARY KEY (`id`)  -- Make postal_code the primary key
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
--- Drop the existing quartiers table if needed
-DROP TABLE IF EXISTS `quartiers`;
-
-CREATE TABLE `quartiers` (
-  `id` INT NOT NULL AUTO_INCREMENT,  -- Make the 'id' column auto-increment
-  `city_id` INT NOT NULL,
-  `name` VARCHAR(255) NOT NULL,
+  `id` int NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `latitude` decimal(9,6) NOT NULL,
+  `longitude` decimal(9,6) NOT NULL,
+  `parent_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
-  FOREIGN KEY (`city_id`) REFERENCES `cities`(`id`) ON DELETE CASCADE
+  KEY `parent_id` (`parent_id`),
+  CONSTRAINT `cities_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `cities` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `cities`
+--
 
+LOCK TABLES `cities` WRITE;
+/*!40000 ALTER TABLE `cities` DISABLE KEYS */;
+INSERT INTO `cities` VALUES (13001,'Marseille',43.296500,5.369800,NULL),(69001,'Lyon',45.764000,4.835700,NULL),(75001,'Paris',48.856600,2.352200,NULL);
+/*!40000 ALTER TABLE `cities` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
 -- Table structure for table `conversations`
 --
 
@@ -131,7 +135,6 @@ INSERT INTO `events` VALUES (1,'brocante','brocante','2025-01-16 12:42:00','14 R
 /*!40000 ALTER TABLE `events` ENABLE KEYS */;
 UNLOCK TABLES;
 
-
 --
 -- Table structure for table `interests`
 --
@@ -159,12 +162,12 @@ CREATE TABLE `interests` (
 --
 -- Dumping data for table `interests`
 --
+
 LOCK TABLES `interests` WRITE;
 /*!40000 ALTER TABLE `interests` DISABLE KEYS */;
-INSERT INTO `interests` VALUES (1,3,6,'2025-01-17 17:54:56',NULL,'accepted','2025-01-17 17:54:56','2025-01-18 10:37:14'),(2,3,6,'2025-01-17 18:01:10',NULL,'pending','2025-01-17 18:01:10','2025-01-17 18:01:10'),(3,3,5,'2025-01-17 18:01:59',NULL,'pending','2025-01-17 18:01:59','2025-01-17 18:01:59'),(4,3,6,'2025-01-17 18:02:40',NULL,'pending','2025-01-17 18:02:40','2025-01-17 18:02:40'),(5,3,8,'2025-01-17 21:32:05',NULL,'accepted','2025-01-17 21:32:05','2025-01-18 14:48:31'),(6,3,8,'2025-01-17 21:33:12',NULL,'accepted','2025-01-17 21:33:12','2025-01-18 15:31:34'),(7,3,8,'2025-01-17 21:35:52',NULL,'pending','2025-01-17 21:35:52','2025-01-17 21:35:52'),(8,3,8,'2025-01-17 22:30:21',NULL,'pending','2025-01-17 22:30:21','2025-01-17 22:30:21'),(9,3,8,'2025-01-17 22:42:32',NULL,'pending','2025-01-17 22:42:32','2025-01-17 22:42:32'),(10,3,8,'2025-01-18 10:57:31',NULL,'pending','2025-01-18 10:57:31','2025-01-18 10:57:31'),(11,3,8,'2025-01-18 11:27:20',NULL,'pending','2025-01-18 11:27:20','2025-01-18 11:27:20'),(12,3,8,'2025-01-18 11:27:30',NULL,'pending','2025-01-18 11:27:30','2025-01-18 11:27:30'),(13,3,8,'2025-01-18 11:28:19',NULL,'pending','2025-01-18 11:28:19','2025-01-18 11:28:19'),(14,3,8,'2025-01-18 11:32:58',NULL,'rejected','2025-01-18 11:32:58','2025-01-18 14:36:39'),(15,3,8,'2025-01-18 12:08:04',NULL,'accepted','2025-01-18 12:08:04','2025-01-18 14:36:30'),(16,3,8,'2025-01-18 12:08:13',NULL,'pending','2025-01-18 12:08:13','2025-01-18 12:08:13'),(17,3,7,'2025-01-18 12:13:10',NULL,'pending','2025-01-18 12:13:10','2025-01-18 12:13:10'),(18,3,7,'2025-01-18 12:16:41',NULL,'pending','2025-01-18 12:16:41','2025-01-18 12:16:41'),(19,3,7,'2025-01-18 12:27:20',NULL,'pending','2025-01-18 12:27:20','2025-01-18 12:27:20'),(20,3,7,'2025-01-18 12:44:54',NULL,'pending','2025-01-18 12:44:54','2025-01-18 12:44:54'),(21,3,7,'2025-01-18 12:46:48',NULL,'pending','2025-01-18 12:46:48','2025-01-18 12:46:48'),(22,3,8,'2025-01-18 12:48:08',NULL,'accepted','2025-01-18 12:48:08','2025-01-18 15:05:37'),(23,3,8,'2025-01-18 12:48:24',NULL,'accepted','2025-01-18 12:48:24','2025-01-18 14:38:00'),(24,3,7,'2025-01-18 12:48:31',NULL,'pending','2025-01-18 12:48:31','2025-01-18 12:48:31'),(25,3,7,'2025-01-18 12:53:01',NULL,'rejected','2025-01-18 12:53:01','2025-01-18 14:48:05'),(26,3,8,'2025-01-18 12:53:11',NULL,'pending','2025-01-18 12:53:11','2025-01-18 12:53:11'),(27,3,8,'2025-01-18 12:57:10',NULL,'accepted','2025-01-18 12:57:10','2025-01-18 15:35:58'),(28,3,8,'2025-01-18 12:58:16',NULL,'rejected','2025-01-18 12:58:16','2025-01-18 14:38:26'),(29,3,8,'2025-01-18 13:06:17',NULL,'accepted','2025-01-18 13:06:17','2025-01-18 14:35:42'),(30,3,8,'2025-01-18 13:07:06',NULL,'accepted','2025-01-18 13:07:06','2025-01-18 14:35:34'),(31,3,8,'2025-01-18 13:08:26',NULL,'rejected','2025-01-18 13:08:26','2025-01-18 14:35:23'),(32,3,8,'2025-01-18 13:14:30',NULL,'accepted','2025-01-18 13:14:30','2025-01-18 13:21:49'),(33,3,8,'2025-01-18 14:08:25',NULL,'accepted','2025-01-18 14:08:25','2025-01-18 14:08:30'),(34,3,8,'2025-01-18 14:40:53',NULL,'pending','2025-01-18 14:40:53','2025-01-18 14:40:53'),(35,3,7,'2025-01-18 14:41:03',NULL,'pending','2025-01-18 14:41:03','2025-01-18 14:41:03'),(36,3,7,'2025-01-18 15:04:37',NULL,'pending','2025-01-18 15:04:37','2025-01-18 15:04:37'),(37,3,8,'2025-01-18 15:05:10',NULL,'pending','2025-01-18 15:05:10','2025-01-18 15:05:10'),(38,3,8,'2025-01-18 15:37:21',NULL,'pending','2025-01-18 15:37:21','2025-01-18 15:37:21'),(39,3,8,'2025-01-18 15:38:06',NULL,'pending','2025-01-18 15:38:06','2025-01-18 15:38:06'),(40,3,8,'2025-01-18 15:43:11',NULL,'accepted','2025-01-18 15:43:11','2025-01-18 15:43:27'),(41,3,8,'2025-02-22 12:34:43',NULL,'pending','2025-02-22 12:34:43','2025-02-22 12:34:43');
+INSERT INTO `interests` VALUES (1,3,6,'2025-01-17 17:54:56',NULL,'accepted','2025-01-17 17:54:56','2025-01-18 10:37:14'),(2,3,6,'2025-01-17 18:01:10',NULL,'accepted','2025-01-17 18:01:10','2025-02-22 20:02:39'),(3,3,5,'2025-01-17 18:01:59',NULL,'accepted','2025-01-17 18:01:59','2025-02-23 17:56:38'),(4,3,6,'2025-01-17 18:02:40',NULL,'pending','2025-01-17 18:02:40','2025-01-17 18:02:40'),(5,3,8,'2025-01-17 21:32:05',NULL,'accepted','2025-01-17 21:32:05','2025-01-18 14:48:31'),(6,3,8,'2025-01-17 21:33:12',NULL,'accepted','2025-01-17 21:33:12','2025-01-18 15:31:34'),(7,3,8,'2025-01-17 21:35:52',NULL,'pending','2025-01-17 21:35:52','2025-01-17 21:35:52'),(8,3,8,'2025-01-17 22:30:21',NULL,'pending','2025-01-17 22:30:21','2025-01-17 22:30:21'),(9,3,8,'2025-01-17 22:42:32',NULL,'pending','2025-01-17 22:42:32','2025-01-17 22:42:32'),(10,3,8,'2025-01-18 10:57:31',NULL,'pending','2025-01-18 10:57:31','2025-01-18 10:57:31'),(11,3,8,'2025-01-18 11:27:20',NULL,'pending','2025-01-18 11:27:20','2025-01-18 11:27:20'),(12,3,8,'2025-01-18 11:27:30',NULL,'pending','2025-01-18 11:27:30','2025-01-18 11:27:30'),(13,3,8,'2025-01-18 11:28:19',NULL,'pending','2025-01-18 11:28:19','2025-01-18 11:28:19'),(14,3,8,'2025-01-18 11:32:58',NULL,'rejected','2025-01-18 11:32:58','2025-01-18 14:36:39'),(15,3,8,'2025-01-18 12:08:04',NULL,'accepted','2025-01-18 12:08:04','2025-01-18 14:36:30'),(16,3,8,'2025-01-18 12:08:13',NULL,'pending','2025-01-18 12:08:13','2025-01-18 12:08:13'),(17,3,7,'2025-01-18 12:13:10',NULL,'pending','2025-01-18 12:13:10','2025-01-18 12:13:10'),(18,3,7,'2025-01-18 12:16:41',NULL,'pending','2025-01-18 12:16:41','2025-01-18 12:16:41'),(19,3,7,'2025-01-18 12:27:20',NULL,'pending','2025-01-18 12:27:20','2025-01-18 12:27:20'),(20,3,7,'2025-01-18 12:44:54',NULL,'pending','2025-01-18 12:44:54','2025-01-18 12:44:54'),(21,3,7,'2025-01-18 12:46:48',NULL,'pending','2025-01-18 12:46:48','2025-01-18 12:46:48'),(22,3,8,'2025-01-18 12:48:08',NULL,'accepted','2025-01-18 12:48:08','2025-01-18 15:05:37'),(23,3,8,'2025-01-18 12:48:24',NULL,'accepted','2025-01-18 12:48:24','2025-01-18 14:38:00'),(24,3,7,'2025-01-18 12:48:31',NULL,'pending','2025-01-18 12:48:31','2025-01-18 12:48:31'),(25,3,7,'2025-01-18 12:53:01',NULL,'rejected','2025-01-18 12:53:01','2025-01-18 14:48:05'),(26,3,8,'2025-01-18 12:53:11',NULL,'pending','2025-01-18 12:53:11','2025-01-18 12:53:11'),(27,3,8,'2025-01-18 12:57:10',NULL,'accepted','2025-01-18 12:57:10','2025-01-18 15:35:58'),(28,3,8,'2025-01-18 12:58:16',NULL,'rejected','2025-01-18 12:58:16','2025-01-18 14:38:26'),(29,3,8,'2025-01-18 13:06:17',NULL,'accepted','2025-01-18 13:06:17','2025-01-18 14:35:42'),(30,3,8,'2025-01-18 13:07:06',NULL,'accepted','2025-01-18 13:07:06','2025-01-18 14:35:34'),(31,3,8,'2025-01-18 13:08:26',NULL,'rejected','2025-01-18 13:08:26','2025-01-18 14:35:23'),(32,3,8,'2025-01-18 13:14:30',NULL,'accepted','2025-01-18 13:14:30','2025-01-18 13:21:49'),(33,3,8,'2025-01-18 14:08:25',NULL,'accepted','2025-01-18 14:08:25','2025-01-18 14:08:30'),(34,3,8,'2025-01-18 14:40:53',NULL,'pending','2025-01-18 14:40:53','2025-01-18 14:40:53'),(35,3,7,'2025-01-18 14:41:03',NULL,'pending','2025-01-18 14:41:03','2025-01-18 14:41:03'),(36,3,7,'2025-01-18 15:04:37',NULL,'pending','2025-01-18 15:04:37','2025-01-18 15:04:37'),(37,3,8,'2025-01-18 15:05:10',NULL,'pending','2025-01-18 15:05:10','2025-01-18 15:05:10'),(38,3,8,'2025-01-18 15:37:21',NULL,'pending','2025-01-18 15:37:21','2025-01-18 15:37:21'),(39,3,8,'2025-01-18 15:38:06',NULL,'pending','2025-01-18 15:38:06','2025-01-18 15:38:06'),(40,3,8,'2025-01-18 15:43:11',NULL,'accepted','2025-01-18 15:43:11','2025-01-18 15:43:27'),(41,3,8,'2025-02-22 12:34:43',NULL,'pending','2025-02-22 12:34:43','2025-02-22 12:34:43');
 /*!40000 ALTER TABLE `interests` ENABLE KEYS */;
 UNLOCK TABLES;
-
 
 --
 -- Table structure for table `messages`
@@ -191,6 +194,10 @@ CREATE TABLE `messages` (
 -- Dumping data for table `messages`
 --
 
+LOCK TABLES `messages` WRITE;
+/*!40000 ALTER TABLE `messages` DISABLE KEYS */;
+/*!40000 ALTER TABLE `messages` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `notifications`
@@ -209,7 +216,7 @@ CREATE TABLE `notifications` (
   PRIMARY KEY (`id`),
   KEY `user_id` (`user_id`),
   CONSTRAINT `notifications_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=60 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=90 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -218,10 +225,9 @@ CREATE TABLE `notifications` (
 
 LOCK TABLES `notifications` WRITE;
 /*!40000 ALTER TABLE `notifications` DISABLE KEYS */;
-INSERT INTO `notifications` VALUES (9,6,'interest_accepted','Votre demande a été acceptée ! Vous pouvez contacter le proposeur.',3,'2025-01-18 10:37:14'),(10,6,'interest_accepted','Votre demande pour \"Nettoyage de printemps\" a été acceptée 🎉.',1,'2025-01-18 10:37:14'),(48,7,'interest_rejected','❌ Marie Martin, Nettoyage de printemps a été refusée par 5.',3,'2025-01-18 14:48:05'),(50,5,'interest_request','Marie Martin est intéressé(e) par votre offre : Nettoyage de printemps',36,'2025-01-18 15:04:37'),(51,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',37,'2025-01-18 15:05:10'),(53,8,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr 📞 3630',3,'2025-01-18 15:31:34'),(54,8,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr',3,'2025-01-18 15:35:58'),(55,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',38,'2025-01-18 15:37:21'),(56,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',39,'2025-01-18 15:38:06'),(57,5,'interest_request','Pierre Lefevre est intéressé(e) par votre offre : Nettoyage de printemps',40,'2025-01-18 15:43:11'),(58,8,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr',3,'2025-01-18 15:43:27');
+INSERT INTO `notifications` VALUES (48,7,'interest_rejected','❌ Marie Martin, Nettoyage de printemps a été refusée par 5.',3,'2025-01-18 14:48:05'),(53,8,'interest_accepted','???? hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : ???? hanat@live.fr ???? 3630',3,'2025-01-18 15:31:34'),(54,8,'interest_accepted','???? hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : ???? hanat@live.fr',3,'2025-01-18 15:35:58'),(58,8,'interest_accepted','???? hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : ???? hanat@live.fr',3,'2025-01-18 15:43:27'),(63,1,'danger_alert','⚠️ Problème signalé dans votre quartier : 🚨 Test d\'une alerte critique !',6,'2025-02-22 19:49:30'),(64,1,'danger_alert','⚠️ Problème signalé dans votre quartier : 🚨 Test d\'une autre alerte critique !',7,'2025-02-22 19:50:19'),(67,1,'danger_alert','⚠️ Problème signalé dans votre quartier : 🚨 Test d\'une autre alerte critique !',10,'2025-02-22 19:57:06'),(69,6,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr 📞 3630',3,'2025-02-22 20:02:39'),(71,7,'danger_alert','⚠️ Problème signalé dans votre quartier : 🚨 Test d\'une autre alerte critique !',13,'2025-02-23 10:44:21'),(72,1,'danger_alert','⚠️ Problème signalé dans votre quartier : 🚨 Test d\'une autre alerte critique !',13,'2025-02-23 10:44:21'),(73,4,'danger_alert','⚠️ Problème signalé dans votre quartier : 🚨 Test d\'une autre alerte critique !',13,'2025-02-23 10:44:21'),(75,6,'danger_alert','⚠️ Problème signalé dans votre quartier : 🚨 Test d\'une autre alerte critique !',13,'2025-02-23 10:44:21'),(76,8,'danger_alert','⚠️ Problème signalé dans votre quartier : 🚨 Test d\'une autre alerte critique !',13,'2025-02-23 10:44:21'),(77,7,'danger_alert','⚠️ Problème signalé dans votre quartier : Fête très bruyante avec musique forte dans l’appartement du 4ème étage, Bâtiment C',14,'2025-02-23 10:50:49'),(78,1,'danger_alert','⚠️ Problème signalé dans votre quartier : Fête très bruyante avec musique forte dans l’appartement du 4ème étage, Bâtiment C',14,'2025-02-23 10:50:49'),(79,4,'danger_alert','⚠️ Problème signalé dans votre quartier : Fête très bruyante avec musique forte dans l’appartement du 4ème étage, Bâtiment C',14,'2025-02-23 10:50:49'),(81,6,'danger_alert','⚠️ Problème signalé dans votre quartier : Fête très bruyante avec musique forte dans l’appartement du 4ème étage, Bâtiment C',14,'2025-02-23 10:50:49'),(82,8,'danger_alert','⚠️ Problème signalé dans votre quartier : Fête très bruyante avec musique forte dans l’appartement du 4ème étage, Bâtiment C',14,'2025-02-23 10:50:49'),(83,7,'danger_alert','⚠️ Problème signalé dans votre quartier : Fête très bruyante avec musique forte dans l’appartement du 1ème étage, Bâtiment B',15,'2025-02-23 11:07:09'),(84,1,'danger_alert','⚠️ Problème signalé dans votre quartier : Fête très bruyante avec musique forte dans l’appartement du 1ème étage, Bâtiment B',15,'2025-02-23 11:07:09'),(85,4,'danger_alert','⚠️ Problème signalé dans votre quartier : Fête très bruyante avec musique forte dans l’appartement du 1ème étage, Bâtiment B',15,'2025-02-23 11:07:09'),(87,6,'danger_alert','⚠️ Problème signalé dans votre quartier : Fête très bruyante avec musique forte dans l’appartement du 1ème étage, Bâtiment B',15,'2025-02-23 11:07:09'),(88,8,'danger_alert','⚠️ Problème signalé dans votre quartier : Fête très bruyante avec musique forte dans l’appartement du 1ème étage, Bâtiment B',15,'2025-02-23 11:07:09'),(89,5,'interest_accepted','🎉 hana a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 hanat@live.fr 📞 3630',3,'2025-02-23 17:56:38');
 /*!40000 ALTER TABLE `notifications` ENABLE KEYS */;
 UNLOCK TABLES;
-
 
 --
 -- Table structure for table `participants`
@@ -249,7 +255,10 @@ CREATE TABLE `participants` (
 -- Dumping data for table `participants`
 --
 
-
+LOCK TABLES `participants` WRITE;
+/*!40000 ALTER TABLE `participants` DISABLE KEYS */;
+/*!40000 ALTER TABLE `participants` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `project_members`
@@ -275,6 +284,10 @@ CREATE TABLE `project_members` (
 -- Dumping data for table `project_members`
 --
 
+LOCK TABLES `project_members` WRITE;
+/*!40000 ALTER TABLE `project_members` DISABLE KEYS */;
+/*!40000 ALTER TABLE `project_members` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `project_votes`
@@ -294,7 +307,7 @@ CREATE TABLE `project_votes` (
   KEY `project_id` (`project_id`),
   CONSTRAINT `project_votes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `project_votes_ibfk_2` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -303,7 +316,7 @@ CREATE TABLE `project_votes` (
 
 LOCK TABLES `project_votes` WRITE;
 /*!40000 ALTER TABLE `project_votes` DISABLE KEYS */;
-INSERT INTO `project_votes` VALUES (17,8,3,'up','2025-02-22 21:17:43');
+INSERT INTO `project_votes` VALUES (9,5,3,'up','2025-02-23 14:09:56');
 /*!40000 ALTER TABLE `project_votes` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -335,7 +348,7 @@ CREATE TABLE `projects` (
 
 LOCK TABLES `projects` WRITE;
 /*!40000 ALTER TABLE `projects` DISABLE KEYS */;
-INSERT INTO `projects` VALUES (3,'Collecte de denrées.','Le projet de collecte de denrées a pour but de...','Collecte',7,'2025-02-21 22:00:06','2025-04-05 22:00:00','En cours'),(4,'Mon Projet','Projet de Pierre','Rénovation',8,'2025-02-22 21:15:40','2025-02-26 23:00:00','En cours');
+INSERT INTO `projects` VALUES (3,'Collecte de denrées.','Le projet de collecte de denrées a pour but de...','Collecte',7,'2025-02-21 22:00:06','2025-04-05 22:00:00','En cours'),(4,'Installation d\'un banc','Il faudrait un autre banc pour permettre à qui le veut de s\'assoir','Mobilier urbain',5,'2025-02-23 14:09:52','2025-04-24 22:00:00','En cours');
 /*!40000 ALTER TABLE `projects` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -366,13 +379,13 @@ CREATE TABLE `propositions` (
 --
 -- Dumping data for table `propositions`
 --
+
 LOCK TABLES `propositions` WRITE;
 /*!40000 ALTER TABLE `propositions` DISABLE KEYS */;
 INSERT INTO `propositions` VALUES (2,2,5,'Réparer vos chauffages ','Je peux réparer les chauffages aux personnes démunies',1,'2025-01-16 12:24:43','2025-01-16 12:24:43'),(3,1,5,'Nettoyage de printemps','Je propose un service de nettoyage pour votre maison.',1,'2025-01-17 17:12:46','2025-01-17 17:12:46');
 /*!40000 ALTER TABLE `propositions` ENABLE KEYS */;
 UNLOCK TABLES;
 
---
 --
 -- Table structure for table `services`
 --
@@ -425,7 +438,7 @@ CREATE TABLE `signalements` (
   PRIMARY KEY (`id`),
   KEY `fk_user_signalement` (`user_id`),
   CONSTRAINT `fk_user_signalement` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -434,7 +447,7 @@ CREATE TABLE `signalements` (
 
 LOCK TABLES `signalements` WRITE;
 /*!40000 ALTER TABLE `signalements` DISABLE KEYS */;
-INSERT INTO `signalements` VALUES (1,'Dangers','Homme armé d\'un couteau, bâtiment A',0,'Batiment A','2025-02-22 14:33:55',1,5);
+INSERT INTO `signalements` VALUES (1,'Dangers','Homme armé d\'un couteau, bâtiment A',0,'Batiment A','2025-02-22 14:33:55',1,5),(2,'Urbain','Fuite d\'eau dans le local xy !',0,'Batiment c','2025-02-22 17:17:52',0,5),(3,'Stationnement','Voiture modèle zxy immatriculée xyzjs bloque l\'entrée !',1,'Portail d\'entrée','2025-02-22 17:18:57',0,5),(4,'Dangers','hb,n',1,'jjnk','2025-02-22 17:30:45',0,5),(5,'Dangers','Homme armé',1,'batiment c','2025-02-22 18:38:34',0,5),(6,'Dangers','🚨 Test d\'une alerte critique !',1,'Entrée du bâtiment A','2025-02-22 18:49:30',0,1),(7,'Dangers','🚨 Test d\'une autre alerte critique !',1,'Entrée du bâtiment A','2025-02-22 18:50:19',0,1),(8,'Dangers','🚨 Test d\'une autre alerte critique !',1,'Entrée du bâtiment A','2025-02-22 18:56:19',0,5),(9,'Dangers','🚨 Test d\'une autre alerte critique !',1,'Entrée du bâtiment A','2025-02-22 18:56:38',0,5),(10,'Dangers','🚨 Test d\'une autre alerte critique !',1,'Entrée du bâtiment A','2025-02-22 18:57:06',0,1),(11,'Stationnement','Voiture qui gêne la sortie pompiers !!',1,'Bat A','2025-02-22 19:01:37',0,5),(12,'Dangers','blabla',1,'bat B','2025-02-22 19:04:01',0,5),(13,'Dangers','🚨 Test d\'une autre alerte critique !',1,'Entrée du bâtiment A','2025-02-23 09:44:21',0,1),(14,'Bruit','Fête très bruyante avec musique forte dans l’appartement du 4ème étage, Bâtiment C',1,'appartement du 4ème étage, Bâtiment C','2025-02-23 09:50:49',0,1),(15,'Bruit','Fête très bruyante avec musique forte dans l’appartement du 1ème étage, Bâtiment B',1,'appartement du 1ème étage, Bâtiment B','2025-02-23 10:07:09',1,1);
 /*!40000 ALTER TABLE `signalements` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -455,38 +468,52 @@ CREATE TABLE `users` (
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `phone_number` varchar(20) DEFAULT NULL,
   `city_id` int DEFAULT NULL,
-  `quartier_id` int DEFAULT NULL,  -- New column to link users to a quartier
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   KEY `fk_city` (`city_id`),
-  KEY `fk_quartier` (`quartier_id`),  -- Index for the new foreign key
-  CONSTRAINT `fk_city` FOREIGN KEY (`city_id`) REFERENCES `cities` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_quartier` FOREIGN KEY (`quartier_id`) REFERENCES `quartiers` (`id`) ON DELETE SET NULL  -- Link to quartiers
+  CONSTRAINT `fk_city` FOREIGN KEY (`city_id`) REFERENCES `cities` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `users`
 --
+
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,'ouragh','hana@live.fr','Inscription92!','resident','2025-01-16 11:48:04','2025-01-16 11:48:04','3630',75001,75),(4,'hana','hanatest@live.fr','Test123!','resident','2025-01-16 11:59:53','2025-01-16 11:59:53','3630',75001,33),(5,'hana','hanat@live.fr','Test123!','resident','2025-01-16 12:08:49','2025-01-16 12:08:49','3630',75001,75),(6,'Jean Dupont','jean.dupont@email.com','password123','resident','2025-01-16 12:23:17','2025-01-16 12:23:17','0601234567',75001,75),(7,'Marie Martin','marie.martin@email.com','secret456','service_provider','2025-01-16 12:23:17','2025-01-16 12:23:17','0612345678',69001,null),(8,'Pierre Lefevre','pierre.lefevre@email.com','topsecret789','administrator','2025-01-16 12:23:17','2025-01-16 12:23:17','0623456789',75001,75);
+INSERT INTO `users` VALUES (1,'ouragh','hana@live.fr','Inscription92!','resident','2025-01-16 11:48:04','2025-01-16 11:48:04','3630',75001),(4,'hana','hanatest@live.fr','Test123!','resident','2025-01-16 11:59:53','2025-01-16 11:59:53','3630',75001),(5,'hana','hanat@live.fr','Test123!','resident','2025-01-16 12:08:49','2025-01-16 12:08:49','3630',75001),(6,'Jean Dupont','jean.dupont@email.com','password123','resident','2025-01-16 12:23:17','2025-01-16 12:23:17','0601234567',75001),(7,'Marie Martin','marie.martin@email.com','secret456','service_provider','2025-01-16 12:23:17','2025-01-16 12:23:17','0612345678',69001),(8,'Pierre Lefevre','pierre.lefevre@email.com','topsecret789','administrator','2025-01-16 12:23:17','2025-01-16 12:23:17','0623456789',75001);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
+--
 -- Table structure for table `votes`
 --
 
 DROP TABLE IF EXISTS `votes`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `votes` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `project_id` int NOT NULL,
+  `vote` varchar(10) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`),
+  KEY `project_id` (`project_id`),
+  CONSTRAINT `votes_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
+  CONSTRAINT `votes_ibfk_2` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Dumping data for table `votes`
+--
+
+LOCK TABLES `votes` WRITE;
 /*!40000 ALTER TABLE `votes` DISABLE KEYS */;
 /*!40000 ALTER TABLE `votes` ENABLE KEYS */;
+UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-
-DROP TABLE IF EXISTS `votes`;  
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
@@ -496,4 +523,4 @@ DROP TABLE IF EXISTS `votes`;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-02-22 18:09:15
+-- Dump completed on 2025-02-23 18:12:44
