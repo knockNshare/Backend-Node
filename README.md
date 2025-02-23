@@ -1,6 +1,15 @@
-[![Node.js CI Windows build and test](https://github.com/DevOps-CH3/Backend-Node/actions/workflows/node-ci.yml/badge.svg?branch=develop)](https://github.com/DevOps-CH3/Backend-Node/actions/workflows/node-ci.yml/)
-[![Codecov](https://codecov.io/gh/DevOps-CH3/Backend-Node/branch/develop/graph/badge.svg)](https://codecov.io/gh/DevOps-CH3/Backend-Node)
+# Mon Projet - Backend Node
 
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/knockNshare/Backend-Node)](https://github.com/knockNshare/Backend-Node/releases)
+[![CI Status](https://img.shields.io/github/workflow/status/knockNshare/Backend-Node/CI?label=CI&style=flat-square)](https://github.com/knockNshare/Backend-Node/actions)
+[![Codecov](https://img.shields.io/codecov/c/github/knockNshare/Backend-Node?label=Coverage)](https://codecov.io/gh/knockNshare/Backend-Node)
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/<votre-id-projet>)](https://www.codacy.com/gh/knockNshare/Backend-Node)
+[![Reliability Rating](https://img.shields.io/sonar/quality_gate/Backend-Node/reliability?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io)
+[![Security Rating](https://img.shields.io/sonar/security/Backend-Node?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io)
+[![Bugs](https://img.shields.io/sonar/bugs/Backend-Node?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io)
+[![Technical Debt](https://img.shields.io/sonar/debt_ratio/Backend-Node?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io)
+[![Lines of Code](https://img.shields.io/tokei/lines/github/knockNshare/Backend-Node)](https://github.com/knockNshare/Backend-Node)
 
 
 # KnockNShare
