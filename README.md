@@ -133,3 +133,6 @@ Pour toute question, vous pouvez contacter l’équipe KnockNShare :
 [![Codecov](https://codecov.io/gh/DevOps-CH3/Backend-Node/branch/develop/graph/badge.svg)](https://codecov.io/gh/DevOps-CH3/Backend-Node)
 
 To have the cities and quartiers you need to install python3 and then run python3 insert_cities.py , python3 insert_quartiers_paris ,python3 insert_quartiers_nanterre in order !
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/knockNshare/Backend-Node)](https://github.com/knockNshare/Backend-Node/releases)
+[![Build & test](https://github.com/knockNshare/Backend-Node/actions/workflows/node-ci.yml/badge.svg?branch=main)](https://github.com/knockNshare/Backend-Node/actions/workflows/node-ci.yml)
