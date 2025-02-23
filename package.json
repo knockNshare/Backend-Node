@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "npm run seed-db && node index.js",
     "test": "jest --coverage",
-    "server": "nodemon ./index.js"
+    "server": "nodemon ./index.js",
+    "seed-db": "python3 insert_cities.py && python3 insert_quartier_paris.py && python3 insert_quartier_nanterre.py"
+
   },
   "jest": {
     "collectCoverage": true,
