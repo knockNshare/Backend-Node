@@ -1564,7 +1564,7 @@ app.post('/signalements', (req, res) => {
     if (!user_id || !categorie || !description) {
         return res.status(400).json({ error: "Tous les champs obligatoires ne sont pas remplis." });
     }
-    //avant ajout de websocket pour le temps réel
+
     const sql = `INSERT INTO signalements (user_id, categorie, description, critique, quartier) VALUES (?, ?, ?, ?, ?)`;
     con.query(sql, [user_id, categorie, description, critique, quartier], (err, result) => {
         if (err) {
@@ -1572,28 +1572,40 @@ app.post('/signalements', (req, res) => {
             return res.status(500).json({ error: "Erreur interne du serveur." });
         }
 
+        const newSignalement = {
+            id: result.insertId,
+            user_id,
+            categorie,
+            description,
+            critique,
+            quartier,
+            date_creation: new Date().toISOString()
+        };
+
+        // ✅ Envoi en temps réel via WebSockets
+        const io = req.app.get("socketio");
+        io.emit("new-signalement", newSignalement);
+
         // ✅ Envoi d'une notification si critique
         if (critique) {
             const notifMessage = `⚠️ Problème signalé dans votre quartier : ${description}`;
-        
+
             // Récupérer tous les utilisateurs
             con.query("SELECT id FROM users", (err, users) => {
                 if (err) {
                     console.error("Erreur récupération des utilisateurs :", err);
                     return res.status(500).json({ error: "Erreur interne du serveur." });
                 }
-        
-                const io = req.app.get("socketio");
-        
+
                 users.forEach(user => {
                     const userId = user.id;
-        
+
                     // Insérer une notification pour chaque utilisateur
                     con.query(
                         "INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
                         [userId, "danger_alert", notifMessage, result.insertId]
                     );
-        
+
                     // ✅ Envoyer la notification en temps réel
                     io.to(`user_${userId}`).emit(`notification-${userId}`, {
                         id: result.insertId,
@@ -1602,9 +1614,11 @@ app.post('/signalements', (req, res) => {
                         related_entity_id: result.insertId
                     });
                 });
-        
+
                 res.status(201).json({ message: "Signalement ajouté avec succès et notification envoyée." });
             });
+        } else {
+            res.status(201).json({ message: "Signalement ajouté avec succès." });
         }
     });
 });
