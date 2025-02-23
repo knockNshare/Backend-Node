@@ -35,7 +35,7 @@ jobs:
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        token: ${{ secrets.a7b25924-6dc3-469f-80de-b01601b7968a }}  # Using the secret token for authentication
+        token: ${{ secrets.CODECOV_TOKEN }}  # Using the secret token for authentication
         files: ./coverage/test-coverage.xml  # Path to the XML report
         fail_ci_if_error: true  # Fail the CI if uploading fails
         verbose: true  # Show details about the upload process
