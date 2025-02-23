@@ -614,6 +614,64 @@ app.post('/api/projects', (req, res) => {
 
 
 
+// Supprimer un projet (seulement si l'utilisateur est l'auteur)
+app.delete('/api/projects/:id', (req, res) => {
+    const projectId = req.params.id;
+    const { user_id } = req.body;
+
+    // Vérifier si l'utilisateur est bien l'auteur du projet
+    con.query("SELECT author_id FROM projects WHERE id = ?", [projectId], (err, results) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur serveur." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Projet introuvable." });
+        }
+
+        if (results[0].author_id !== user_id) {
+            return res.status(403).json({ error: "Vous n'êtes pas autorisé à supprimer ce projet." });
+        }
+
+        // Suppression du projet
+        con.query("DELETE FROM projects WHERE id = ?", [projectId], (err) => {
+            if (err) return res.status(500).json({ error: "Erreur lors de la suppression du projet." });
+            return res.status(200).json({ message: "Projet supprimé avec succès." });
+        });
+    });
+});
+
+
+
+// Modifier un projet (seulement si l'utilisateur est l'auteur)
+app.put('/api/projects/:id', (req, res) => {
+
+    const projectId = req.params.id;
+    const { title, description, category, deadline, user_id } = req.body;
+    
+    con.query("SELECT author_id FROM projects WHERE id = ?", [projectId], (err, results) => {
+        if (err) return res.status(500).json({ error: "Erreur serveur." });
+        if (results.length === 0) return res.status(404).json({ error: "Projet introuvable." });
+
+        if (Number(results[0].author_id) !== Number(user_id)) {
+            return res.status(403).json({ error: "Accès interdit. Ce projet ne vous appartient pas." });
+        }
+
+        con.query(
+            "UPDATE projects SET title = ?, description = ?, category = ?, deadline = ? WHERE id = ?",
+            [title, description, category, deadline, projectId],
+            (err) => {
+                if (err) return res.status(500).json({ error: "Erreur lors de la mise à jour." });
+                return res.status(200).json({ message: "Projet mis à jour avec succès." });
+            }
+        );
+    });
+});
+
+
+
+
 // Récupérer tous les projets
 app.get('/api/projects', (req, res) => {
     const sql = `
@@ -719,14 +777,6 @@ app.post('/api/projects/:id/vote', (req, res) => {
         });
     });
 });
-
-
-
-
-
-
-
-
 
 //--------------------FIN_PROJECTS---------------------
 
