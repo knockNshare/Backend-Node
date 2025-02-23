@@ -7,7 +7,6 @@
     "test": "jest --coverage",
     "server": "nodemon ./index.js",
     "seed-db": "python3 insert_cities.py && python3 insert_quartier_paris.py && python3 insert_quartier_nanterre.py"
-
   },
   "jest": {
     "collectCoverage": true,
@@ -37,6 +36,7 @@
   "devDependencies": {
     "codecov": "^3.8.2",
     "jest": "^29.7.0",
+    "jest-cli": "^29.7.0",
     "supertest": "^7.0.0"
   }
 }
