@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/knockNshare/Backend-Node)](https://github.com/knockNshare/Backend-Node/releases)
-[![Build & test](https://github.com/<YourUsername>/knockNshare/actions/workflows/node-ci.yml/badge.svg?branch=main)](https://github.com/Hiba-7/knockNshare/actions/workflows/node-ci.yml)
+[![Build & test](https://github.com/<YourUsername>/knockNshare/actions/workflows/node-ci.yml/badge.svg?branch=main)](https://github.com/knockNshare/actions/workflows/node-ci.yml)
 
 
 # KnockNShare
