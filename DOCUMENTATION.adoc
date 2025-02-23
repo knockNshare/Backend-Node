@@ -625,3 +625,161 @@ Notre application comble un **manque majeur** dans la gestion des signalements e
 ---
 
 🚀 **Feature livrée avec succès !** 🎉
+
+
+
+
+
+
+
+== 📌 Documentation v1.0 – Gestion des Projets
+
+=== **Description**  
+Cette fonctionnalité introduit la gestion complète des projets au sein de l’application.  
+Les utilisateurs peuvent **créer, modifier et supprimer** des projets communautaires, voter pour un projet et suivre leur évolution.  
+Les projets sont **rattachés aux quartiers** pour favoriser des initiatives locales et renforcer l’engagement des résidents.
+
+---
+
+=== **Flux Utilisateur**  
+
+. **Création d’un Projet**  
+  * L’utilisateur clique sur **“+ Créer un projet”**.  
+  * Il remplit un formulaire comprenant : **titre, description, catégorie, date limite**.  
+  * Le projet est automatiquement **associé au quartier** de l’utilisateur.  
+  * Une fois validé, le projet apparaît dans la liste des projets de son quartier.  
+
+. **Affichage des Projets**  
+  * Par défaut, seuls les **projets du quartier** de l’utilisateur sont affichés.  
+  * Une case à cocher **"Afficher tous les projets"** permet de voir **l’ensemble des projets** disponibles.  
+
+. **Détails d’un Projet**  
+  * Un utilisateur peut **cliquer sur un projet** pour voir ses détails complets (créateur, description, votes, date limite).  
+  * Si l’utilisateur est le créateur du projet, il peut **le modifier ou le supprimer**.  
+
+. **Modification d’un Projet** *(seulement pour le créateur)*  
+  * L’utilisateur accède aux détails de son projet et clique sur **“Modifier”**.  
+  * Un **formulaire pré-rempli** lui permet de mettre à jour les informations.  
+  * Après validation, les modifications sont **enregistrées en base** et **affichées en temps réel**.  
+
+. **Suppression d’un Projet** *(seulement pour le créateur)*  
+  * L’utilisateur clique sur **“Supprimer”**.  
+  * Une **confirmation** s’affiche pour éviter toute suppression accidentelle.  
+  * Le projet est définitivement supprimé.  
+
+. **Votes sur un Projet**  
+  * Les utilisateurs peuvent **voter pour ou contre** un projet (**👍 Upvote** ou **👎 Downvote**).  
+  * Un utilisateur **ne peut pas voter pour son propre projet**.  
+  * Les votes sont **mis à jour en temps réel** sans rechargement de la page.  
+  * Une fois la période de votes terminée, un projet est **accepté ou rejeté** en fonction du nombre de votes positifs/négatifs.  
+
+---
+
+=== **Endpoints Backend**
+[options="header"]
+|===
+| Méthode | Endpoint | Description  
+| **POST** | `/api/projects` | Créer un projet  
+| **GET** | `/api/projects` | Récupérer tous les projets (avec option quartier/tous les projets)  
+| **GET** | `/api/projects/:id` | Récupérer les détails d’un projet  
+| **PUT** | `/api/projects/:id` | Modifier un projet *(seulement si l’utilisateur est le créateur)*  
+| **DELETE** | `/api/projects/:id` | Supprimer un projet *(seulement si l’utilisateur est le créateur)*  
+| **POST** | `/api/projects/:id/vote` | Voter pour un projet *(👍 / 👎)*  
+|===  
+
+---
+
+=== **Diagramme de Séquence : Gestion des Projets**
+[plantuml, gestion-projets-sequence, svg]
+----
+@startuml
+actor "Utilisateur" as User
+participant "Frontend (React)" as FE
+participant "Backend API" as API
+participant "Base de Données" as DB
+
+== 📌 1. Création d’un Projet ==
+User -> FE: Clique sur "Créer un projet"
+FE -> API: **POST** /api/projects (titre, description, catégorie, deadline, quartier_id)
+API -> DB: 🔍 Vérifie les données et insère le projet
+DB --> API: ✅ OK (id_projet)
+API --> FE: Confirme la création et met à jour la liste des projets
+
+== 📌 2. Affichage des Projets ==
+User -> FE: Accède à la page "Projets"
+FE -> API: **GET** /api/projects?quartier_id=X
+API -> DB: 🔍 Récupère les projets du quartier
+DB --> API: 📋 Liste des projets filtrés
+API --> FE: Affichage des projets
+
+== 📌 3. Modification d’un Projet ==
+User -> FE: Ouvre son projet et clique sur "Modifier"
+FE -> API: **PUT** /api/projects/:id (nouvelles valeurs)
+API -> DB: ✅ Met à jour le projet
+DB --> API: 📋 Confirme la mise à jour
+API --> FE: Affichage des nouvelles valeurs
+
+== 📌 4. Suppression d’un Projet ==
+User -> FE: Clique sur "Supprimer"
+FE -> API: **DELETE** /api/projects/:id
+API -> DB: ❌ Supprime le projet
+DB --> API: ✅ Suppression confirmée
+API --> FE: Met à jour la liste des projets
+
+== 📌 5. Vote sur un Projet ==
+User -> FE: Clique sur "👍" ou "👎"
+FE -> API: **POST** /api/projects/:id/vote (vote=up/down, user_id)
+API -> DB: 🔍 Vérifie si l’utilisateur a déjà voté
+DB --> API: ✅ OK
+API -> DB: 📝 Met à jour le vote
+DB --> API: 📋 Retourne le nouveau compteur de votes
+API --> FE: Affichage des votes mis à jour
+
+@enduml
+----
+
+---
+
+=== 📊 Impact Métier & Valeur Ajoutée
+[options="header"]
+|===
+| Fonctionnalité | Valeur Ajoutée  
+| 🏡 *Projets rattachés aux quartiers* | Favorise les initiatives locales et renforce le lien social.  
+| ✅ *Gestion complète (CRUD)* | Permet aux utilisateurs de créer, modifier et supprimer leurs projets en toute autonomie.  
+| 👍👎 *Votes en temps réel* | Donne un retour direct sur l’intérêt du projet auprès de la communauté.  
+| 🔥 *Visibilité optimisée* | Les projets sont mis en avant selon leur popularité et leur pertinence.  
+|===  
+
+---
+
+=== **✅ Tests & Validation**
+- **Tests unitaires** :  
+  * Création, modification et suppression d’un projet → ✅ OK  
+  * Votes sur un projet → ✅ OK  
+
+- **Tests d’intégration** :  
+  * Validation de l’affichage des projets filtrés par quartier → ✅ Fonctionnel  
+  * Test de l’option "Afficher tous les projets" → ✅ Fonctionnel  
+
+- **Tests REST API (Postman)** :  
+  * `POST /api/projects` → **201 Created**  
+  * `GET /api/projects` (avec quartier_id) → **200 OK**  
+  * `PUT /api/projects/:id` (modification) → **200 OK**  
+  * `DELETE /api/projects/:id` → **200 OK**  
+  * `POST /api/projects/:id/vote` → **200 OK**  
+
+---
+
+=== **🚀 Conclusion**
+🎯 **Bilan de la feature :**  
+- ✅ Création et gestion des projets **simple et fluide**  
+- ✅ **Filtrage intelligent** des projets selon le quartier  
+- ✅ **Système de votes participatif** pour la validation des projets  
+- ✅ **Interface optimisée et ergonomique**  
+
+🔥 **Prochaines améliorations possibles :**  
+- Ajout d’une **gestion des tâches** par projet (Kanban).  
+- Système de **commentaires** sur les projets.  
+- Ajout d’un **statut de projet** (`En cours`, `Terminé`, etc.).  
+
+🚀 **Feature livrée avec succès !** 🎉
