@@ -90,9 +90,9 @@ app.get("/get", (req,res) =>{
 
 // Route pour l'inscription
 app.post('/api/signup', (req, res) => {
-    const { name, email, phone_number, password, city_id } = req.body;
+    const { name, email, phone_number, password, city_id,quartier_id } = req.body;
 
-    if (!name || !email || !phone_number || !password || !city_id) {
+    if (!name || !email || !phone_number || !password || !city_id || !quartier_id)  {
         return res.status(400).json({ error: 'Tous les champs requis doivent être remplis.' });
     }
 
@@ -109,8 +109,8 @@ app.post('/api/signup', (req, res) => {
         }
 
         // Insérer le nouvel utilisateur (sans hashage)
-        const insertUserQuery = 'INSERT INTO users (name, email, phone_number, password, city_id) VALUES (?, ?, ?, ?, ?)';
-        con.query(insertUserQuery, [name, email, phone_number, password, city_id], (err, result) => {
+        const insertUserQuery = 'INSERT INTO users (name, email, phone_number, password, city_id,quartier_id) VALUES (?, ?, ?, ?, ?,?)';
+        con.query(insertUserQuery, [name, email, phone_number, password, city_id,quartier_id], (err, result) => {
             if (err) {
                 console.error('Erreur SQL lors de l\'insertion de l\'utilisateur :', err);
                 return res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur' });
@@ -441,6 +441,23 @@ const getEventsByCity = async (city_id) => {
         throw error; // Propagate the error
     }
 };
+const getQuartiersByCity = async (city_id) => {
+    // SQL query to retrieve events by city_id
+    const query = `
+        SELECT *
+        FROM quartiers
+        WHERE city_id = ?;  
+    `;
+
+    try {
+        // Run the query with the promise-based API
+        const [rows] = await con.promise().query(query, [city_id]);  // Use promise().query() and pass city_id
+        return rows;  // `rows` is the result of the query
+    } catch (error) {
+        console.error('Error fetching events:', error);
+        throw error; // Propagate the error
+    }
+};
 
 app.get('/api/events/city/:city_id', async (req, res) => {
     console.log("I get events by city");
@@ -451,6 +468,21 @@ app.get('/api/events/city/:city_id', async (req, res) => {
     try {
         // Fetch events by city_id from the database
         const events = await getEventsByCity(city_id);
+        res.json(events);  // Send the result as JSON
+    } catch (error) {
+        console.error('Error fetching events by city:', error);
+        res.status(500).send("Internal Server Error");  // Handle any errors
+    }
+});
+app.get('/api/quartiers/:city_id', async (req, res) => {
+    console.log("I get quartiers by city");
+
+    // Access city_id from the route parameters
+    const { city_id } = req.params;  // Access city_id via req.params
+
+    try {
+        // Fetch events by city_id from the database
+        const events = await getQuartiersByCity(city_id);
         res.json(events);  // Send the result as JSON
     } catch (error) {
         console.error('Error fetching events by city:', error);
@@ -1444,7 +1476,7 @@ app.get("/users", (req, res) => {
     const offset = (page - 1) * limit;
 
     const query = `
-        SELECT id, name, email, phone_number, role, city_id, created_at, updated_at
+        SELECT id, name, email, phone_number, role, city_id, created_at, updated_at,quartier_id
         FROM users
         LIMIT ? OFFSET ?
     `;
