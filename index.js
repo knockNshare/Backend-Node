@@ -73,7 +73,7 @@ con.connect(function(err) {
 
 //-----------API Endpoints pour le TEST-----------
 app.get('/', (req, res) => {
-    res.send('Bienvenue clara dans l API !');
+    res.send('Welcome to the API!');
 });
 
 app.get('/api/hello', (req, res) => {
