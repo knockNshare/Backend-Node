@@ -211,58 +211,46 @@ app.get('/api/events', (req, res) => {
 });
 
 app.get('/api/events/search', (req, res) => {
-    const { keyword, categories, cityId } = req.query;
+    const { keyword, categories, cityId, user_id } = req.query;
+
     // Step 1: Start with the base query to fetch events
-    let sql = 'SELECT * FROM events WHERE 1=1';  // 1=1 is used to easily append additional conditions
+    let sql = `
+        SELECT e.*, 
+               CASE WHEN p.user_id IS NOT NULL THEN true ELSE false END AS isParticipating
+        FROM events e
+        LEFT JOIN participants p ON e.id = p.event_id AND p.user_id = ?
+        WHERE 1=1
+    `;
 
-    // Step 2: Add filter for keyword (title and description) using Fuse.js if provided
-    let filterConditions = [];
+    const queryParams = [user_id]; // Add user_id as the first parameter
 
-
+    // Step 2: Add filter for keyword (title and description) if provided
+    if (keyword && keyword.trim() !== "") {
+        sql += ` AND (e.title LIKE ? OR e.description LIKE ?)`;
+        queryParams.push(`%${keyword}%`, `%${keyword}%`);
+    }
 
     // Step 3: Add filter for categories if provided
     if (categories && categories.trim() !== "") {
-        const categoriesArray = categories.split(',');  // Categories come in as a comma-separated string
-        filterConditions.push(`category IN (${categoriesArray.map(c => `'${c}'`).join(',')})`);
+        const categoriesArray = categories.split(',');
+        sql += ` AND e.category IN (${categoriesArray.map(() => '?').join(',')})`;
+        queryParams.push(...categoriesArray);
     }
 
     // Step 4: Add filter for cityId if provided
     if (cityId && cityId.trim() !== "") {
-        filterConditions.push(`city_id = ${cityId}`);
+        sql += ` AND e.city_id = ?`;
+        queryParams.push(cityId);
     }
 
-    // Step 5: Combine all filter conditions
-    if (filterConditions.length > 0) {
-        sql += ' AND ' + filterConditions.join(' AND ');
-    }
-
-    // Step 6: Query the database with the constructed SQL query
-    con.query(sql, (err, results) => {
+    // Step 5: Query the database with the constructed SQL query
+    con.query(sql, queryParams, (err, results) => {
         if (err) {
             console.error('Erreur SQL (fetch events):', err);
             return res.status(500).json({ error: 'Erreur serveur' });
         }
 
-        // Step 7: If keyword is provided, use Fuse.js for fuzzy searching in title and description
-        if (keyword && keyword.trim() !== "") {
-            const fuseOptions = {
-                keys: ['title', 'description'],
-                threshold: 0.4,  // Lower threshold to make the fuzzy search more flexible (default is 0.4)
-                distance: 100,   // Increase the distance for matching (allows partial matches)
-                includeScore: true,
-                minMatchCharLength: 2,  // To avoid very short matches like a single character
-                
-            };
-
-            const fuse = new Fuse(results, fuseOptions);
-            const fuzzyResults = fuse.search(keyword);
-            const matchedEvents = fuzzyResults.map(result => result.item);
-            console.log("🟢 Fuzzy matched events:", matchedEvents);
-            return res.status(200).json(matchedEvents);
-        }
-
-        console.log("🟢 Filtered events IDs found:", results.map(event => event.id));
-        res.status(200).json(results);
+        res.status(200).json(results); // Return the events with participation status
     });
 });
 
@@ -313,25 +301,6 @@ app.get('/api/events/:id', (req, res) => {
 });
 
 
-// Route pour supprimer un événement
-app.delete('/api/events/:id', (req, res) => {
-    const eventId = req.params.id;
-
-    // Supprimer un événement par son ID
-    const sql = 'DELETE FROM events WHERE id = ?';
-    con.query(sql, [eventId], (err, result) => {
-        if (err) {
-            console.error('Erreur SQL (suppression):', err);
-            return res.status(500).json({ error: 'Erreur lors de la suppression de l\'événement.' });
-        }
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Événement introuvable.' });
-        }
-
-        res.status(200).json({ message: 'Événement supprimé avec succès.' });
-    });
-});
 
 
 // Route to get events by user ID (as creator or participant)
@@ -376,28 +345,28 @@ app.get('/api/events/user/:user_id', (req, res) => {
 });
 app.get('/api/events/region/:city_id', (req, res) => {
     const cityId = req.params.city_id;
+    const userId = req.query.user_id; // Get user_id from query parameters
 
     console.log("Fetching events for city:", cityId);
 
-    // Query to get events in the same city
-    const sqlEvents = 'SELECT * FROM events WHERE city_id = ?';
+    // Query to get events in the same city with participation status
+    const sqlEvents = `
+        SELECT e.*, 
+               CASE WHEN p.user_id IS NOT NULL THEN true ELSE false END AS isParticipating
+        FROM events e
+        LEFT JOIN participants p ON e.id = p.event_id AND p.user_id = ?
+        WHERE e.city_id = ?
+    `;
 
-    con.query(sqlEvents, [cityId], (err, events) => {
+    con.query(sqlEvents, [userId, cityId], (err, events) => {
         if (err) {
             console.error('Erreur SQL (fetch events):', err);
             return res.status(500).json({ error: 'Erreur serveur' });
         }
 
-        // Instead of sending a 404 when no events are found, return an empty array
-        if (events.length === 0) {
-            return res.status(200).json([]);  // Return an empty array with status 200
-        }
-        console.log("events by region",events);
-        res.status(200).json(events);  // Return the events if they exist
+        res.status(200).json(events); // Return the events with participation status
     });
 });
-
-
 
 const getEventsByCity = async (city_id) => {
     // SQL query to retrieve events by city_id
@@ -496,7 +465,7 @@ app.get('/cities', async (req, res) => {
 
 app.post('/api/events/participate', (req, res) => {
     const { event_id, user_id } = req.body;
-
+    console.log("Participate : Event ID:", event_id, "User ID:", user_id);
     if (!event_id || !user_id) {
         return res.status(400).json({ error: 'Event ID and User ID are required' });
     }
@@ -530,36 +499,44 @@ app.post('/api/events/participate', (req, res) => {
 });
 app.delete('/api/events/leave', (req, res) => {
     const { event_id, user_id } = req.body;
-
+    console.log('Leaving event:', { event_id, user_id });
     if (!event_id || !user_id) {
         return res.status(400).json({ error: 'Event ID and User ID are required' });
     }
-
-    // Check if the user is actually participating
-    const checkParticipationSql = 'SELECT * FROM participants WHERE event_id = ? AND user_id = ?';
-    
-    con.query(checkParticipationSql, [event_id, user_id], (err, results) => {
-        if (err) {
-            console.error('Erreur SQL (check participation):', err);
-            return res.status(500).json({ error: 'Erreur serveur' });
-        }
-
-        if (results.length === 0) {
-            return res.status(404).json({ error: 'User is not participating in this event' });
-        }
-
-        // Remove the user from the participants table
-        const deleteParticipationSql = 'DELETE FROM participants WHERE event_id = ? AND user_id = ?';
+      // Remove the user from the participants table
+      const deleteParticipationSql = 'DELETE FROM participants WHERE event_id = ? AND user_id = ?';
         
-        con.query(deleteParticipationSql, [event_id, user_id], (err, result) => {
-            if (err) {
-                console.error('Erreur SQL (delete participation):', err);
-                return res.status(500).json({ error: 'Erreur serveur' });
-            }
+      con.query(deleteParticipationSql, [event_id, user_id], (err, result) => {
+          if (err) {
+              console.error('Erreur SQL (delete participation):', err);
+              return res.status(500).json({ error: 'Erreur serveur' });
+          }
 
-            // Respond with a success message
-            res.status(200).json({ message: 'User successfully left the event' });
-        });
+          // Respond with a success message
+          res.status(200).json({ message: 'User successfully left the event' });
+      });
+
+ 
+});
+
+// Route pour supprimer un événement
+app.delete('/api/events/:id', (req, res) => {
+    const eventId = req.params.id;
+    console.log('deleting event:', { eventId });
+
+    // Supprimer un événement par son ID
+    const sql = 'DELETE FROM events WHERE id = ?';
+    con.query(sql, [eventId], (err, result) => {
+        if (err) {
+            console.error('Erreur SQL (suppression):', err);
+            return res.status(500).json({ error: 'Erreur lors de la suppression de l\'événement.' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Événement introuvable.' });
+        }
+
+        res.status(200).json({ message: 'Événement supprimé avec succès.' });
     });
 });
 
