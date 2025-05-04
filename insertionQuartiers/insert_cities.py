@@ -1,6 +1,6 @@
+import mysql.connector
 import csv
 import os
-import mysql.connector
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -22,7 +22,7 @@ conn = mysql.connector.connect(
 cursor = conn.cursor()
 
 # CSV file path
-csv_file_path = "Communes.csv"
+csv_file_path = "insertionQuartiers/Communes.csv"
 
 # Set to track communes we've already inserted
 processed_communes = set()

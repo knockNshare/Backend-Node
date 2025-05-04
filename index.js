@@ -7,6 +7,9 @@ require('dotenv').config();
 const http = require("http");
 const socketIo = require("socket.io");
 const Fuse = require('fuse.js');
+const axios = require('axios');
+const querystring = require('querystring');
+
 
 // Initialiser l'application Express
 const app = express();
@@ -147,6 +150,122 @@ app.post('/api/login', (req, res) => {
         }
     });
 });
+
+
+
+
+
+
+// OAuth2 Google - rediriger vers la page d'authentification Google
+app.get("/api/auth/google", (req, res) => {
+    const redirect_uri = process.env.GOOGLE_CALLBACK_URL;
+    const client_id = process.env.GOOGLE_CLIENT_ID;
+
+    const authUrl = "https://accounts.google.com/o/oauth2/v2/auth?" + querystring.stringify({
+        client_id,
+        redirect_uri,
+        response_type: "code",
+        scope: "openid profile email",
+        access_type: "offline",
+        prompt: "consent",
+    });
+
+    res.redirect(authUrl);
+});
+
+// OAuth2 Google - callback pour récupérer le code d'authentification
+app.get("/api/auth/google/callback", async (req, res) => {
+    const code = req.query.code;
+    if (!code) return res.status(400).send("Code manquant dans la requête.");
+
+    try {
+        const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", querystring.stringify({
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: process.env.GOOGLE_CALLBACK_URL,
+            grant_type: "authorization_code"
+        }), {
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+        });
+
+        const jwt = require("jsonwebtoken");
+
+        const { id_token } = tokenResponse.data;
+        const decoded = jwt.decode(id_token);
+        const { email, name, sub: google_id } = decoded;
+
+        // Vérification utilisateur en base
+        const checkUserQuery = 'SELECT * FROM users WHERE email = ?';
+        con.query(checkUserQuery, [email], (err, results) => {
+            if (err) {
+                console.error("Erreur SQL (check user) :", err);
+                return res.status(500).json({ error: "Erreur serveur" });
+            }
+
+            const generateAndRedirect = (user) => {
+                const payload = {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    quartier_id: user.quartier_id,
+                    city_id: user.city_id
+                };
+
+                const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "2h" });
+
+                const redirectUrl = `http://localhost:3001/oauth-success?token=${token}`;
+                return res.redirect(redirectUrl);
+            };
+
+            if (results.length > 0) {
+                // Utilisateur existant → on génère le token et on redirige
+                generateAndRedirect(results[0]);
+            } else {
+                // Insertion d’un nouvel utilisateur
+                const default_city_id = 75101;
+                const default_quartier_id = 75;
+                const insertQuery = `
+                    INSERT INTO users (name, email, password, city_id, quartier_id, google_id)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `;
+
+                con.query(insertQuery, [name, email, null, default_city_id, default_quartier_id, google_id], (err, result) => {
+                    if (err) {
+                        console.error("Erreur SQL (insert user) :", err);
+                        return res.status(500).json({ error: "Erreur création utilisateur Google" });
+                    }
+
+                    const newUser = {
+                        id: result.insertId,
+                        name,
+                        email,
+                        quartier_id: default_quartier_id,
+                        city_id: default_city_id
+                    };
+
+                    generateAndRedirect(newUser);
+                });
+            }
+        });
+
+    } catch (error) {
+        console.error("Erreur OAuth2 Google :", error?.response?.data || error.message);
+        res.status(500).send("Erreur lors du traitement du code d'authentification.");
+    }
+});
+
+
+
+
+
+
+
+
+
+
 
 // Pour valider une image à partir de son URL
 app.get('/api/validate-image', async (req, res) => {
@@ -1328,8 +1447,8 @@ app.put('/interests/:id', (req, res) => {
 app.get("/interests/received/:id", (req, res) => {
     /*
     C’est ce que fait la route /interests/received/:id.
-	•	Cette route récupère les intérêts pour lesquels l’utilisateur est le proposer_id.
-	•	Exemple : l’utilisateur a posté une annonce pour “Cleaning” → il voit toutes les personnes intéressées.
+    •	Cette route récupère les intérêts pour lesquels l’utilisateur est le proposer_id.
+    •	Exemple : l’utilisateur a posté une annonce pour “Cleaning” → il voit toutes les personnes intéressées.
      */
     const userId = req.params.id; // ID de l'utilisateur (offreur)
 
