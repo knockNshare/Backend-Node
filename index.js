@@ -434,69 +434,7 @@ app.get('/api/events/:id', (req, res) => {
 
 
 // Route to get events by user ID (as creator or participant)
-app.get('/api/events/user/:user_id', (req, res) => {
-    const userId = req.params.user_id;
 
-    // Query to get events where the user is the creator
-    const sqlCreator = 'SELECT * FROM events WHERE creator_id = ?';
-
-    // Query to get events where the user is a participant
-    const sqlParticipant = 'SELECT e.* FROM events e JOIN participants p ON e.id = p.event_id WHERE p.user_id = ?';
-
-    // Get events where the user is the creator
-    con.query(sqlCreator, [userId], (err, creatorEvents) => {
-        if (err) {
-            console.error('Erreur SQL (creator events):', err);
-            return res.status(500).json({ error: 'Erreur serveur' });
-        }
-
-        // Get events where the user is a participant
-        con.query(sqlParticipant, [userId], (err, participantEvents) => {
-            if (err) {
-                console.error('Erreur SQL (participant events):', err);
-                return res.status(500).json({ error: 'Erreur serveur' });
-            }
-
-            // Format the response with two sections: creator events and participant events
-            const response = {
-                creatorEvents: creatorEvents,  // Events where the user is the creator
-                participantEvents: participantEvents  // Events where the user is a participant
-            };
-
-            // If no events are found in either section
-            if (response.creatorEvents.length === 0 && response.participantEvents.length === 0) {
-                return res.status(404).json({ error: 'Aucun événement trouvé pour cet utilisateur' });
-            }
-
-            // Send the formatted response
-            res.status(200).json(response);
-        });
-    });
-});
-app.get('/api/events/region/:city_id', (req, res) => {
-    const cityId = req.params.city_id;
-    const userId = req.query.user_id; // Get user_id from query parameters
-
-    console.log("Fetching events for city:", cityId);
-
-    // Query to get events in the same city with participation status
-    const sqlEvents = `
-        SELECT e.*, 
-               CASE WHEN p.user_id IS NOT NULL THEN true ELSE false END AS isParticipating
-        FROM events e
-        LEFT JOIN participants p ON e.id = p.event_id AND p.user_id = ?
-        WHERE e.city_id = ?
-    `;
-
-    con.query(sqlEvents, [userId, cityId], (err, events) => {
-        if (err) {
-            console.error('Erreur SQL (fetch events):', err);
-            return res.status(500).json({ error: 'Erreur serveur' });
-        }
-
-        res.status(200).json(events); // Return the events with participation status
-    });
-});
 
 const getEventsByCity = async (city_id) => {
     // SQL query to retrieve events by city_id
@@ -533,19 +471,54 @@ const getQuartiersByCity = async (city_id) => {
     }
 };
 
-app.get('/api/events/city/:city_id', async (req, res) => {
-    console.log("I get events by city");
-
-    // Access city_id from the route parameters
-    const { city_id } = req.params;  // Access city_id via req.params
+app.get('/api/user/events/:userId', async (req, res) => {
+    const userId = req.params.userId;
 
     try {
-        // Fetch events by city_id from the database
-        const events = await getEventsByCity(city_id);
-        res.json(events);  // Send the result as JSON
+        // Step 1: Get events the user is participating in
+        const eventsQuery = `
+            SELECT e.*, true AS isParticipating
+            FROM events e
+            JOIN participants p ON e.id = p.event_id
+            WHERE p.user_id = ?
+        `;
+        const [events] = await con.promise().query(eventsQuery, [userId]);
+        console.log("Events the user is participating in:", events);
+        res.status(200).json(events); // Return the events
     } catch (error) {
-        console.error('Error fetching events by city:', error);
-        res.status(500).send("Internal Server Error");  // Handle any errors
+        console.error('Erreur lors de la récupération des événements de l\'utilisateur :', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.get('/api/events/user/:userId', async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+        // Step 1: Get the user's city_id
+        const cityQuery = `SELECT city_id FROM users WHERE id = ?`;
+        const [cityResult] = await con.promise().query(cityQuery, [userId]);
+
+        if (cityResult.length === 0) {
+            return res.status(404).json({ error: "Utilisateur non trouvé." });
+        }
+
+        const cityId = cityResult[0].city_id;
+
+        // Step 2: Get events in the user's city with participation status
+        const eventsQuery = `
+            SELECT e.*, 
+                   CASE WHEN p.user_id IS NOT NULL THEN true ELSE false END AS isParticipating
+            FROM events e
+            LEFT JOIN participants p ON e.id = p.event_id AND p.user_id = ?
+            WHERE e.city_id = ?
+        `;
+        const [events] = await con.promise().query(eventsQuery, [userId, cityId]);
+        console.log("Events in user's city:", events);
+        res.status(200).json(events); // Return the events
+    } catch (error) {
+        console.error('Erreur lors de la récupération des événements par ville :', error);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 app.get('/api/quartiers/:city_id', async (req, res) => {
@@ -667,6 +640,46 @@ app.delete('/api/events/:id', (req, res) => {
         }
 
         res.status(200).json({ message: 'Événement supprimé avec succès.' });
+    });
+});
+
+app.get('/api/events/user/:user_id', (req, res) => {
+    const userId = req.params.user_id;
+
+    // Query to get events where the user is the creator
+    const sqlCreator = 'SELECT * FROM events WHERE creator_id = ?';
+
+    // Query to get events where the user is a participant
+    const sqlParticipant = 'SELECT e.* FROM events e JOIN participants p ON e.id = p.event_id WHERE p.user_id = ?';
+
+    // Get events where the user is the creator
+    con.query(sqlCreator, [userId], (err, creatorEvents) => {
+        if (err) {
+            console.error('Erreur SQL (creator events):', err);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        // Get events where the user is a participant
+        con.query(sqlParticipant, [userId], (err, participantEvents) => {
+            if (err) {
+                console.error('Erreur SQL (participant events):', err);
+                return res.status(500).json({ error: 'Erreur serveur' });
+            }
+
+            // Format the response with two sections: creator events and participant events
+            const response = {
+                creatorEvents: creatorEvents,  // Events where the user is the creator
+                participantEvents: participantEvents  // Events where the user is a participant
+            };
+
+            // If no events are found in either section
+            if (response.creatorEvents.length === 0 && response.participantEvents.length === 0) {
+                return res.status(404).json({ error: 'Aucun événement trouvé pour cet utilisateur' });
+            }
+
+            // Send the formatted response
+            res.status(200).json(response);
+        });
     });
 });
 
