@@ -165,7 +165,7 @@ app.get("/api/auth/google", (req, res) => {
         client_id,
         redirect_uri,
         response_type: "code",
-        scope: "openid profile email",
+        scope: "openid profile email https://www.googleapis.com/auth/calendar.readonly", //j'ai mis ton scope pour le calendar ici
         access_type: "offline",
         prompt: "consent",
     });
@@ -193,7 +193,7 @@ app.get("/api/auth/google/callback", async (req, res) => {
 
         const jwt = require("jsonwebtoken");
 
-        const { id_token } = tokenResponse.data;
+        const { id_token, access_token } = tokenResponse.data; // access_token pour le calendar !
         const decoded = jwt.decode(id_token);
         const { email, name, sub: google_id } = decoded;
 
@@ -216,7 +216,7 @@ app.get("/api/auth/google/callback", async (req, res) => {
 
                 const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "2h" });
 
-                const redirectUrl = `http://localhost:3001/oauth-success?token=${token}`;
+                const redirectUrl = `http://localhost:3001/oauth-success?token=${token}&access_token=${access_token}`; //google calendar ! 
                 return res.redirect(redirectUrl);
             };
 
