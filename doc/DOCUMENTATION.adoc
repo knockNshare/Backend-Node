@@ -819,6 +819,76 @@ Cette avancée rapproche la plateforme d’un véritable assistant de vie commun
 - Bouton “Participer” fonctionnel : interaction avec la base de données + appel API Google Calendar.
 
 
+
+== Authentification Google (OAuth2) – Intégration initiale
+
+=== Objectif
+
+Permettre aux utilisateurs de se connecter à KnockNShare via leur compte Google, sans avoir à créer un compte ou à renseigner un mot de passe.
+Cette étape est également un prérequis technique à l’intégration du calendrier Google.
+
+=== Fonctionnalités livrées
+
+* Redirection de l’utilisateur vers la page d’authentification Google.
+* Décodage du `id_token` pour obtenir les données de base (`email`, `name`, `google_id`).
+* Vérification de l’existence de l’utilisateur en base, création automatique si inexistant.
+* Génération d’un JWT signé, transmis au frontend via redirection.
+* Stockage du `userId` et de l’`access_token` dans le `localStorage` (clé `googleAccessToken`) pour les requêtes vers l’API Calendar.
+
+=== Implémentation technique
+
+==== Backend (Node.js/Express)
+
+* Ajout des routes suivantes :
+
+[source]
+GET  /api/auth/google           // redirection vers Google
+GET  /api/auth/google/callback  // traitement du code + création/utilisateur
+
+* Ajout du scope :
+[source,js]
+scope: "openid profile email https://www.googleapis.com/auth/calendar.readonly"
+
+* Décodage du `id_token` avec `jsonwebtoken`, génération d’un JWT interne avec `userId`, `email`, etc.
+* Enregistrement des utilisateurs Google en base (table `users`) avec `google_id`, sans mot de passe.
+
+==== Frontend (React)
+
+* Ajout d’un bouton “Se connecter avec Google” sur la page de connexion (`LoginPage.jsx`).
+* Ajout d’une page `OAuthSuccess.jsx` qui :
+
+  * lit le `token` et l’`access_token` dans l’URL,
+  * les stocke dans `localStorage`,
+  * met à jour l’`AuthContext`,
+  * redirige l’utilisateur vers le dashboard.
+
+=== Migration SQL associée
+
+Ajout de la colonne `google_id` dans la table `users` et passage de `password` en nullable :
+
+[source,sql]
+
+ALTER TABLE users ADD COLUMN google\_id VARCHAR(255);
+ALTER TABLE users MODIFY COLUMN password VARCHAR(255) NULL;
+
+Fichier de migration : `update_users_schema.sql`
+
+=== Configuration
+
+Ajout des variables suivantes dans le fichier `.env` :
+
+[source]
+
+GOOGLE\_CLIENT\_ID=...
+GOOGLE\_CLIENT\_SECRET=...
+GOOGLE\_CALLBACK\_URL=http://localhost:3000/api/auth/google/callback
+
+
+Le `access_token` Google est désormais stocké dans le navigateur et peut être utilisé par les autres fonctionnalités (ex : synchronisation Calendar).
+
+
+
+
 == Intégration Google Calendar – Détails techniques
 
 === 1. Authentification OAuth
@@ -934,4 +1004,3 @@ Cette fonctionnalité améliore considérablement l’expérience utilisateur :
 - Visualisation des événements Google
 - Reconnexion et gestion de session
 - Base backend synchronisée
-
