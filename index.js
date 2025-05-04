@@ -7,6 +7,9 @@ require('dotenv').config();
 const http = require("http");
 const socketIo = require("socket.io");
 const Fuse = require('fuse.js');
+const axios = require('axios');
+const querystring = require('querystring');
+
 
 // Initialiser l'application Express
 const app = express();
@@ -147,6 +150,122 @@ app.post('/api/login', (req, res) => {
         }
     });
 });
+
+
+
+
+
+
+// OAuth2 Google - rediriger vers la page d'authentification Google
+app.get("/api/auth/google", (req, res) => {
+    const redirect_uri = process.env.GOOGLE_CALLBACK_URL;
+    const client_id = process.env.GOOGLE_CLIENT_ID;
+
+    const authUrl = "https://accounts.google.com/o/oauth2/v2/auth?" + querystring.stringify({
+        client_id,
+        redirect_uri,
+        response_type: "code",
+        scope: "openid profile email https://www.googleapis.com/auth/calendar.readonly", //j'ai mis ton scope pour le calendar ici
+        access_type: "offline",
+        prompt: "consent",
+    });
+
+    res.redirect(authUrl);
+});
+
+// OAuth2 Google - callback pour récupérer le code d'authentification
+app.get("/api/auth/google/callback", async (req, res) => {
+    const code = req.query.code;
+    if (!code) return res.status(400).send("Code manquant dans la requête.");
+
+    try {
+        const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", querystring.stringify({
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: process.env.GOOGLE_CALLBACK_URL,
+            grant_type: "authorization_code"
+        }), {
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+        });
+
+        const jwt = require("jsonwebtoken");
+
+        const { id_token, access_token } = tokenResponse.data; // access_token pour le calendar !
+        const decoded = jwt.decode(id_token);
+        const { email, name, sub: google_id } = decoded;
+
+        // Vérification utilisateur en base
+        const checkUserQuery = 'SELECT * FROM users WHERE email = ?';
+        con.query(checkUserQuery, [email], (err, results) => {
+            if (err) {
+                console.error("Erreur SQL (check user) :", err);
+                return res.status(500).json({ error: "Erreur serveur" });
+            }
+
+            const generateAndRedirect = (user) => {
+                const payload = {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    quartier_id: user.quartier_id,
+                    city_id: user.city_id
+                };
+
+                const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "2h" });
+
+                const redirectUrl = `http://localhost:3001/oauth-success?token=${token}&access_token=${access_token}`; //google calendar ! 
+                return res.redirect(redirectUrl);
+            };
+
+            if (results.length > 0) {
+                // Utilisateur existant → on génère le token et on redirige
+                generateAndRedirect(results[0]);
+            } else {
+                // Insertion d’un nouvel utilisateur
+                const default_city_id = 75101;
+                const default_quartier_id = 75;
+                const insertQuery = `
+                    INSERT INTO users (name, email, password, city_id, quartier_id, google_id)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `;
+
+                con.query(insertQuery, [name, email, null, default_city_id, default_quartier_id, google_id], (err, result) => {
+                    if (err) {
+                        console.error("Erreur SQL (insert user) :", err);
+                        return res.status(500).json({ error: "Erreur création utilisateur Google" });
+                    }
+
+                    const newUser = {
+                        id: result.insertId,
+                        name,
+                        email,
+                        quartier_id: default_quartier_id,
+                        city_id: default_city_id
+                    };
+
+                    generateAndRedirect(newUser);
+                });
+            }
+        });
+
+    } catch (error) {
+        console.error("Erreur OAuth2 Google :", error?.response?.data || error.message);
+        res.status(500).send("Erreur lors du traitement du code d'authentification.");
+    }
+});
+
+
+
+
+
+
+
+
+
+
 
 // Pour valider une image à partir de son URL
 app.get('/api/validate-image', async (req, res) => {
@@ -315,69 +434,7 @@ app.get('/api/events/:id', (req, res) => {
 
 
 // Route to get events by user ID (as creator or participant)
-app.get('/api/events/user/:user_id', (req, res) => {
-    const userId = req.params.user_id;
 
-    // Query to get events where the user is the creator
-    const sqlCreator = 'SELECT * FROM events WHERE creator_id = ?';
-
-    // Query to get events where the user is a participant
-    const sqlParticipant = 'SELECT e.* FROM events e JOIN participants p ON e.id = p.event_id WHERE p.user_id = ?';
-
-    // Get events where the user is the creator
-    con.query(sqlCreator, [userId], (err, creatorEvents) => {
-        if (err) {
-            console.error('Erreur SQL (creator events):', err);
-            return res.status(500).json({ error: 'Erreur serveur' });
-        }
-
-        // Get events where the user is a participant
-        con.query(sqlParticipant, [userId], (err, participantEvents) => {
-            if (err) {
-                console.error('Erreur SQL (participant events):', err);
-                return res.status(500).json({ error: 'Erreur serveur' });
-            }
-
-            // Format the response with two sections: creator events and participant events
-            const response = {
-                creatorEvents: creatorEvents,  // Events where the user is the creator
-                participantEvents: participantEvents  // Events where the user is a participant
-            };
-
-            // If no events are found in either section
-            if (response.creatorEvents.length === 0 && response.participantEvents.length === 0) {
-                return res.status(404).json({ error: 'Aucun événement trouvé pour cet utilisateur' });
-            }
-
-            // Send the formatted response
-            res.status(200).json(response);
-        });
-    });
-});
-app.get('/api/events/region/:city_id', (req, res) => {
-    const cityId = req.params.city_id;
-    const userId = req.query.user_id; // Get user_id from query parameters
-
-    console.log("Fetching events for city:", cityId);
-
-    // Query to get events in the same city with participation status
-    const sqlEvents = `
-        SELECT e.*, 
-               CASE WHEN p.user_id IS NOT NULL THEN true ELSE false END AS isParticipating
-        FROM events e
-        LEFT JOIN participants p ON e.id = p.event_id AND p.user_id = ?
-        WHERE e.city_id = ?
-    `;
-
-    con.query(sqlEvents, [userId, cityId], (err, events) => {
-        if (err) {
-            console.error('Erreur SQL (fetch events):', err);
-            return res.status(500).json({ error: 'Erreur serveur' });
-        }
-
-        res.status(200).json(events); // Return the events with participation status
-    });
-});
 
 const getEventsByCity = async (city_id) => {
     // SQL query to retrieve events by city_id
@@ -414,19 +471,54 @@ const getQuartiersByCity = async (city_id) => {
     }
 };
 
-app.get('/api/events/city/:city_id', async (req, res) => {
-    console.log("I get events by city");
-
-    // Access city_id from the route parameters
-    const { city_id } = req.params;  // Access city_id via req.params
+app.get('/api/user/events/:userId', async (req, res) => {
+    const userId = req.params.userId;
 
     try {
-        // Fetch events by city_id from the database
-        const events = await getEventsByCity(city_id);
-        res.json(events);  // Send the result as JSON
+        // Step 1: Get events the user is participating in
+        const eventsQuery = `
+            SELECT e.*, true AS isParticipating
+            FROM events e
+            JOIN participants p ON e.id = p.event_id
+            WHERE p.user_id = ?
+        `;
+        const [events] = await con.promise().query(eventsQuery, [userId]);
+        console.log("Events the user is participating in:", events);
+        res.status(200).json(events); // Return the events
     } catch (error) {
-        console.error('Error fetching events by city:', error);
-        res.status(500).send("Internal Server Error");  // Handle any errors
+        console.error('Erreur lors de la récupération des événements de l\'utilisateur :', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.get('/api/events/user/:userId', async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+        // Step 1: Get the user's city_id
+        const cityQuery = `SELECT city_id FROM users WHERE id = ?`;
+        const [cityResult] = await con.promise().query(cityQuery, [userId]);
+
+        if (cityResult.length === 0) {
+            return res.status(404).json({ error: "Utilisateur non trouvé." });
+        }
+
+        const cityId = cityResult[0].city_id;
+
+        // Step 2: Get events in the user's city with participation status
+        const eventsQuery = `
+            SELECT e.*, 
+                   CASE WHEN p.user_id IS NOT NULL THEN true ELSE false END AS isParticipating
+            FROM events e
+            LEFT JOIN participants p ON e.id = p.event_id AND p.user_id = ?
+            WHERE e.city_id = ?
+        `;
+        const [events] = await con.promise().query(eventsQuery, [userId, cityId]);
+        console.log("Events in user's city:", events);
+        res.status(200).json(events); // Return the events
+    } catch (error) {
+        console.error('Erreur lors de la récupération des événements par ville :', error);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 app.get('/api/quartiers/:city_id', async (req, res) => {
@@ -548,6 +640,46 @@ app.delete('/api/events/:id', (req, res) => {
         }
 
         res.status(200).json({ message: 'Événement supprimé avec succès.' });
+    });
+});
+
+app.get('/api/events/user/:user_id', (req, res) => {
+    const userId = req.params.user_id;
+
+    // Query to get events where the user is the creator
+    const sqlCreator = 'SELECT * FROM events WHERE creator_id = ?';
+
+    // Query to get events where the user is a participant
+    const sqlParticipant = 'SELECT e.* FROM events e JOIN participants p ON e.id = p.event_id WHERE p.user_id = ?';
+
+    // Get events where the user is the creator
+    con.query(sqlCreator, [userId], (err, creatorEvents) => {
+        if (err) {
+            console.error('Erreur SQL (creator events):', err);
+            return res.status(500).json({ error: 'Erreur serveur' });
+        }
+
+        // Get events where the user is a participant
+        con.query(sqlParticipant, [userId], (err, participantEvents) => {
+            if (err) {
+                console.error('Erreur SQL (participant events):', err);
+                return res.status(500).json({ error: 'Erreur serveur' });
+            }
+
+            // Format the response with two sections: creator events and participant events
+            const response = {
+                creatorEvents: creatorEvents,  // Events where the user is the creator
+                participantEvents: participantEvents  // Events where the user is a participant
+            };
+
+            // If no events are found in either section
+            if (response.creatorEvents.length === 0 && response.participantEvents.length === 0) {
+                return res.status(404).json({ error: 'Aucun événement trouvé pour cet utilisateur' });
+            }
+
+            // Send the formatted response
+            res.status(200).json(response);
+        });
     });
 });
 
@@ -1328,8 +1460,8 @@ app.put('/interests/:id', (req, res) => {
 app.get("/interests/received/:id", (req, res) => {
     /*
     C’est ce que fait la route /interests/received/:id.
-	•	Cette route récupère les intérêts pour lesquels l’utilisateur est le proposer_id.
-	•	Exemple : l’utilisateur a posté une annonce pour “Cleaning” → il voit toutes les personnes intéressées.
+    •	Cette route récupère les intérêts pour lesquels l’utilisateur est le proposer_id.
+    •	Exemple : l’utilisateur a posté une annonce pour “Cleaning” → il voit toutes les personnes intéressées.
      */
     const userId = req.params.id; // ID de l'utilisateur (offreur)
 
