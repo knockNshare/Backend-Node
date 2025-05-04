@@ -783,3 +783,155 @@ API --> FE: Affichage des votes mis à jour
 - Ajout d’un **statut de projet** (`En cours`, `Terminé`, etc.).  
 
 🚀 **Feature livrée avec succès !** 🎉
+
+
+
+== Documentation Technique – Release v1.1 - DevOps2
+
+
+== Objectif de la fonctionnalité
+
+Permettre aux utilisateurs de :
+
+1. Se connecter à leur compte Google via un bouton dédié.
+2. Visualiser leurs événements Google Calendar dans le dashboard de la plateforme.
+3. Ajouter automatiquement un événement à leur Google Calendar lorsqu'ils cliquent sur le bouton “Participer” à un événement.
+
+Cette intégration offre une expérience fluide et connectée, évitant aux utilisateurs d’avoir à gérer manuellement leur emploi du temps après s’être inscrits à un événement.
+
+== 🚀 Nouveauté côté utilisateur
+
+Avant cette release, l’utilisateur ne pouvait ni s’inscrire à un événement, ni le quitter, et aucune synchronisation n’existait avec son agenda personnel.
+
+Avec cette intégration, il peut désormais :
+
+- Participer ou quitter un événement local directement depuis l’interface KnockNShare ;
+- Ajouter automatiquement cet événement à son propre Google Calendar (avec lieu, date, heure, description) ;
+- Et surtout, visualiser en temps réel ses événements Google, y compris ceux ajoutés via KnockNShare, depuis le dashboard de l’application.
+
+Cette avancée rapproche la plateforme d’un véritable assistant de vie communautaire connecté, conforme à notre vision de simplification des interactions sociales au sein des quartiers.
+
+== 🧱 Fonctionnalités livrées
+
+- Connexion OAuth2.0 à Google (frontend) avec affichage des événements à venir.
+- Ajout automatique d’un événement Google Calendar lors du clic sur "Participer".
+- Conservation du token d’accès dans un contexte React (`GoogleAuthContext`) avec mise à jour automatique.
+- Bouton “Participer” fonctionnel : interaction avec la base de données + appel API Google Calendar.
+
+
+== Intégration Google Calendar – Détails techniques
+
+=== 1. Authentification OAuth
+
+Le composant `GoogleAuthProvider.jsx` initialise et configure `gapi.auth2` :
+
+- Récupère et stocke le token.
+- Écoute les connexions/déconnexions avec `auth.isSignedIn.listen`.
+- Expose `signIn()` et `token` via `GoogleAuthContext`.
+
+Scope utilisé :
+
+[source,js]
+----
+const SCOPES = "https://www.googleapis.com/auth/calendar.events";
+----
+
+=== 2. Affichage des événements Google (dashboard)
+
+Dans `Dashboard.jsx` :
+
+- Le bouton *Connecter Google Calendar* lance `signIn()`.
+- Si un `token` est présent, les événements sont récupérés via :
+
+[source,js]
+----
+gapi.client.calendar.events.list({...})
+----
+
+- Le composant `DashboardCalendar.jsx` affiche ces événements.
+
+=== 3. Création d’événement à la participation
+
+Dans `EventPage.jsx`, lors du clic sur *Participer* :
+
+- Ajout du participant via :
+[source]
+----
+POST /api/events/participate
+----
+
+- Création d’un événement Google Calendar :
+
+[source,js]
+----
+POST https://www.googleapis.com/calendar/v3/calendars/primary/events
+Headers: Authorization: Bearer access_token
+----
+
+Payload envoyé :
+
+[source,json]
+----
+{
+  "summary": "Titre",
+  "description": "Description",
+  "location": "Adresse",
+  "start": { "dateTime": "...", "timeZone": "Europe/Paris" },
+  "end": { "dateTime": "...", "timeZone": "Europe/Paris" }
+}
+----
+
+=== 4. Backend (routes Node/Express)
+
+[source]
+----
+POST   /api/events/participate   // ajoute à participants
+DELETE /api/events/leave         // supprime de participants
+----
+
+Gestion de la base MySQL avec vérification des doublons.
+
+== Architecture technique
+
+|===
+| Composant/Fichier         | Rôle
+
+| `GoogleAuthProvider.jsx` | Gère l’authentification OAuth et expose le token
+| `Dashboard.jsx`          | Affiche les événements et déclenche la connexion
+| `DashboardCalendar.jsx`  | Affiche les événements Google Calendar
+| `EventPage.jsx`          | Gère la logique de participation + ajout Google Calendar
+| `/api/events/participate`| Backend : enregistre la participation
+| `/api/events/leave`      | Backend : supprime la participation
+|===
+
+== Problèmes rencontrés
+
+- **Expiration du token** : contournée avec écoute `isSignedIn` dans le contexte
+- **Client ID multiple** : risque de conflit, à sécuriser dans un `.env`.
+- **Perte de session inter-composant** : résolue avec `GoogleAuthContext`.
+
+==  Bénéfices de cette feature dans la stratégie globale de notre application
+
+Cette fonctionnalité améliore considérablement l’expérience utilisateur :
+
+- Meilleure expérience pour l'utilisateur : automatisation de l’ajout d’événements, la participation est plus simple et rapide, et apparaît dans le calendrier personnel de l'utilisateur
+  -Gain de temps → plus besoin de noter l’événement dans un agenda externe.
+  -Moins d’oubli → les rappels automatiques Google s’appliquent.
+  -Notre plateforme KnockNshare devient un vrai outil d’organisation de vie communautaire.
+
+
+== Tests réalisés
+
+- Connexion OAuth fonctionnelle.
+- Visualisation des événements dans le calendrier.
+- Ajout d’un événement fonctionnel avec token valide.
+- Déconnexion/reconnexion gérée automatiquement.
+
+== Release v1.1 – Récapitulatif
+
+- Intégration complète OAuth (Google Calendar)
+- Ajout automatique d’événements
+- Visualisation des événements Google
+- Reconnexion et gestion de session
+- Base backend synchronisée
+
