@@ -10,6 +10,9 @@ require('dotenv').config();
 const http = require("http");
 const socketIo = require("socket.io");
 const Fuse = require('fuse.js');
+const axios = require('axios');
+const querystring = require('querystring');
+
 
 // Initialiser l'application Express
 const app = express();
@@ -22,8 +25,19 @@ const io = socketIo(server, {
     methods: ["GET", "POST"],
   },
 });
-
+app.use((req, res, next) => {
+    res.setHeader(
+        "Content-Security-Policy",
+        "default-src 'self' https://accounts.google.com https://www.googleapis.com https://apis.google.com https://www.gstatic.com; " +
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://www.googleapis.com https://apis.google.com https://www.gstatic.com; " +
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+        "img-src 'self' data: https://www.gstatic.com; " +
+        "connect-src 'self' https://accounts.google.com https://www.googleapis.com https://apis.google.com https://www.gstatic.com;"
+    );
+    next();
+});
 app.use(cors()); 
+
 app.use(express.json());
 
 app.set("socketio", io); 
@@ -140,6 +154,122 @@ app.post('/api/login', (req, res) => {
     });
 });
 
+
+
+
+
+
+// OAuth2 Google - rediriger vers la page d'authentification Google
+app.get("/api/auth/google", (req, res) => {
+    const redirect_uri = process.env.GOOGLE_CALLBACK_URL;
+    const client_id = process.env.GOOGLE_CLIENT_ID;
+
+    const authUrl = "https://accounts.google.com/o/oauth2/v2/auth?" + querystring.stringify({
+        client_id,
+        redirect_uri,
+        response_type: "code",
+        scope: "openid profile email https://www.googleapis.com/auth/calendar.readonly", //j'ai mis ton scope pour le calendar ici
+        access_type: "offline",
+        prompt: "consent",
+    });
+
+    res.redirect(authUrl);
+});
+
+// OAuth2 Google - callback pour récupérer le code d'authentification
+app.get("/api/auth/google/callback", async (req, res) => {
+    const code = req.query.code;
+    if (!code) return res.status(400).send("Code manquant dans la requête.");
+
+    try {
+        const tokenResponse = await axios.post("https://oauth2.googleapis.com/token", querystring.stringify({
+            code,
+            client_id: process.env.GOOGLE_CLIENT_ID,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET,
+            redirect_uri: process.env.GOOGLE_CALLBACK_URL,
+            grant_type: "authorization_code"
+        }), {
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+        });
+
+        const jwt = require("jsonwebtoken");
+
+        const { id_token, access_token } = tokenResponse.data; // access_token pour le calendar !
+        const decoded = jwt.decode(id_token);
+        const { email, name, sub: google_id } = decoded;
+
+        // Vérification utilisateur en base
+        const checkUserQuery = 'SELECT * FROM users WHERE email = ?';
+        con.query(checkUserQuery, [email], (err, results) => {
+            if (err) {
+                console.error("Erreur SQL (check user) :", err);
+                return res.status(500).json({ error: "Erreur serveur" });
+            }
+
+            const generateAndRedirect = (user) => {
+                const payload = {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    quartier_id: user.quartier_id,
+                    city_id: user.city_id
+                };
+
+                const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "2h" });
+
+                const redirectUrl = `http://localhost:3001/oauth-success?token=${token}&access_token=${access_token}`; //google calendar ! 
+                return res.redirect(redirectUrl);
+            };
+
+            if (results.length > 0) {
+                // Utilisateur existant → on génère le token et on redirige
+                generateAndRedirect(results[0]);
+            } else {
+                // Insertion d’un nouvel utilisateur
+                const default_city_id = 75101;
+                const default_quartier_id = 75;
+                const insertQuery = `
+                    INSERT INTO users (name, email, password, city_id, quartier_id, google_id)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                `;
+
+                con.query(insertQuery, [name, email, null, default_city_id, default_quartier_id, google_id], (err, result) => {
+                    if (err) {
+                        console.error("Erreur SQL (insert user) :", err);
+                        return res.status(500).json({ error: "Erreur création utilisateur Google" });
+                    }
+
+                    const newUser = {
+                        id: result.insertId,
+                        name,
+                        email,
+                        quartier_id: default_quartier_id,
+                        city_id: default_city_id
+                    };
+
+                    generateAndRedirect(newUser);
+                });
+            }
+        });
+
+    } catch (error) {
+        console.error("Erreur OAuth2 Google :", error?.response?.data || error.message);
+        res.status(500).send("Erreur lors du traitement du code d'authentification.");
+    }
+});
+
+
+
+
+
+
+
+
+
+
+
 // Pour valider une image à partir de son URL
 app.get('/api/validate-image', async (req, res) => {
     const { url } = req.query;
@@ -214,58 +344,46 @@ app.get('/api/events', (req, res) => {
 });
 
 app.get('/api/events/search', (req, res) => {
-    const { keyword, categories, cityId } = req.query;
+    const { keyword, categories, cityId, user_id } = req.query;
+
     // Step 1: Start with the base query to fetch events
-    let sql = 'SELECT * FROM events WHERE 1=1';  // 1=1 is used to easily append additional conditions
+    let sql = `
+        SELECT e.*, 
+               CASE WHEN p.user_id IS NOT NULL THEN true ELSE false END AS isParticipating
+        FROM events e
+        LEFT JOIN participants p ON e.id = p.event_id AND p.user_id = ?
+        WHERE 1=1
+    `;
 
-    // Step 2: Add filter for keyword (title and description) using Fuse.js if provided
-    let filterConditions = [];
+    const queryParams = [user_id]; // Add user_id as the first parameter
 
-
+    // Step 2: Add filter for keyword (title and description) if provided
+    if (keyword && keyword.trim() !== "") {
+        sql += ` AND (e.title LIKE ? OR e.description LIKE ?)`;
+        queryParams.push(`%${keyword}%`, `%${keyword}%`);
+    }
 
     // Step 3: Add filter for categories if provided
     if (categories && categories.trim() !== "") {
-        const categoriesArray = categories.split(',');  // Categories come in as a comma-separated string
-        filterConditions.push(`category IN (${categoriesArray.map(c => `'${c}'`).join(',')})`);
+        const categoriesArray = categories.split(',');
+        sql += ` AND e.category IN (${categoriesArray.map(() => '?').join(',')})`;
+        queryParams.push(...categoriesArray);
     }
 
     // Step 4: Add filter for cityId if provided
     if (cityId && cityId.trim() !== "") {
-        filterConditions.push(`city_id = ${cityId}`);
+        sql += ` AND e.city_id = ?`;
+        queryParams.push(cityId);
     }
 
-    // Step 5: Combine all filter conditions
-    if (filterConditions.length > 0) {
-        sql += ' AND ' + filterConditions.join(' AND ');
-    }
-
-    // Step 6: Query the database with the constructed SQL query
-    con.query(sql, (err, results) => {
+    // Step 5: Query the database with the constructed SQL query
+    con.query(sql, queryParams, (err, results) => {
         if (err) {
             console.error('Erreur SQL (fetch events):', err);
             return res.status(500).json({ error: 'Erreur serveur' });
         }
 
-        // Step 7: If keyword is provided, use Fuse.js for fuzzy searching in title and description
-        if (keyword && keyword.trim() !== "") {
-            const fuseOptions = {
-                keys: ['title', 'description'],
-                threshold: 0.4,  // Lower threshold to make the fuzzy search more flexible (default is 0.4)
-                distance: 100,   // Increase the distance for matching (allows partial matches)
-                includeScore: true,
-                minMatchCharLength: 2,  // To avoid very short matches like a single character
-                
-            };
-
-            const fuse = new Fuse(results, fuseOptions);
-            const fuzzyResults = fuse.search(keyword);
-            const matchedEvents = fuzzyResults.map(result => result.item);
-            console.log("🟢 Fuzzy matched events:", matchedEvents);
-            return res.status(200).json(matchedEvents);
-        }
-
-        console.log("🟢 Filtered events IDs found:", results.map(event => event.id));
-        res.status(200).json(results);
+        res.status(200).json(results); // Return the events with participation status
     });
 });
 
@@ -316,90 +434,9 @@ app.get('/api/events/:id', (req, res) => {
 });
 
 
-// Route pour supprimer un événement
-app.delete('/api/events/:id', (req, res) => {
-    const eventId = req.params.id;
-
-    // Supprimer un événement par son ID
-    const sql = 'DELETE FROM events WHERE id = ?';
-    con.query(sql, [eventId], (err, result) => {
-        if (err) {
-            console.error('Erreur SQL (suppression):', err);
-            return res.status(500).json({ error: 'Erreur lors de la suppression de l\'événement.' });
-        }
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'Événement introuvable.' });
-        }
-
-        res.status(200).json({ message: 'Événement supprimé avec succès.' });
-    });
-});
 
 
 // Route to get events by user ID (as creator or participant)
-app.get('/api/events/user/:user_id', (req, res) => {
-    const userId = req.params.user_id;
-
-    // Query to get events where the user is the creator
-    const sqlCreator = 'SELECT * FROM events WHERE creator_id = ?';
-
-    // Query to get events where the user is a participant
-    const sqlParticipant = 'SELECT e.* FROM events e JOIN participants p ON e.id = p.event_id WHERE p.user_id = ?';
-
-    // Get events where the user is the creator
-    con.query(sqlCreator, [userId], (err, creatorEvents) => {
-        if (err) {
-            console.error('Erreur SQL (creator events):', err);
-            return res.status(500).json({ error: 'Erreur serveur' });
-        }
-
-        // Get events where the user is a participant
-        con.query(sqlParticipant, [userId], (err, participantEvents) => {
-            if (err) {
-                console.error('Erreur SQL (participant events):', err);
-                return res.status(500).json({ error: 'Erreur serveur' });
-            }
-
-            // Format the response with two sections: creator events and participant events
-            const response = {
-                creatorEvents: creatorEvents,  // Events where the user is the creator
-                participantEvents: participantEvents  // Events where the user is a participant
-            };
-
-            // If no events are found in either section
-            if (response.creatorEvents.length === 0 && response.participantEvents.length === 0) {
-                return res.status(404).json({ error: 'Aucun événement trouvé pour cet utilisateur' });
-            }
-
-            // Send the formatted response
-            res.status(200).json(response);
-        });
-    });
-});
-app.get('/api/events/region/:city_id', (req, res) => {
-    const cityId = req.params.city_id;
-
-    console.log("Fetching events for city:", cityId);
-
-    // Query to get events in the same city
-    const sqlEvents = 'SELECT * FROM events WHERE city_id = ?';
-
-    con.query(sqlEvents, [cityId], (err, events) => {
-        if (err) {
-            console.error('Erreur SQL (fetch events):', err);
-            return res.status(500).json({ error: 'Erreur serveur' });
-        }
-
-        // Instead of sending a 404 when no events are found, return an empty array
-        if (events.length === 0) {
-            return res.status(200).json([]);  // Return an empty array with status 200
-        }
-        console.log("events by region",events);
-        res.status(200).json(events);  // Return the events if they exist
-    });
-});
-
 
 
 const getEventsByCity = async (city_id) => {
@@ -437,19 +474,54 @@ const getQuartiersByCity = async (city_id) => {
     }
 };
 
-app.get('/api/events/city/:city_id', async (req, res) => {
-    console.log("I get events by city");
-
-    // Access city_id from the route parameters
-    const { city_id } = req.params;  // Access city_id via req.params
+app.get('/api/user/events/:userId', async (req, res) => {
+    const userId = req.params.userId;
 
     try {
-        // Fetch events by city_id from the database
-        const events = await getEventsByCity(city_id);
-        res.json(events);  // Send the result as JSON
+        // Step 1: Get events the user is participating in
+        const eventsQuery = `
+            SELECT e.*, true AS isParticipating
+            FROM events e
+            JOIN participants p ON e.id = p.event_id
+            WHERE p.user_id = ?
+        `;
+        const [events] = await con.promise().query(eventsQuery, [userId]);
+        console.log("Events the user is participating in:", events);
+        res.status(200).json(events); // Return the events
     } catch (error) {
-        console.error('Error fetching events by city:', error);
-        res.status(500).send("Internal Server Error");  // Handle any errors
+        console.error('Erreur lors de la récupération des événements de l\'utilisateur :', error);
+        res.status(500).json({ error: 'Erreur serveur' });
+    }
+});
+
+app.get('/api/events/user/:userId', async (req, res) => {
+    const userId = req.params.userId;
+
+    try {
+        // Step 1: Get the user's city_id
+        const cityQuery = `SELECT city_id FROM users WHERE id = ?`;
+        const [cityResult] = await con.promise().query(cityQuery, [userId]);
+
+        if (cityResult.length === 0) {
+            return res.status(404).json({ error: "Utilisateur non trouvé." });
+        }
+
+        const cityId = cityResult[0].city_id;
+
+        // Step 2: Get events in the user's city with participation status
+        const eventsQuery = `
+            SELECT e.*, 
+                   CASE WHEN p.user_id IS NOT NULL THEN true ELSE false END AS isParticipating
+            FROM events e
+            LEFT JOIN participants p ON e.id = p.event_id AND p.user_id = ?
+            WHERE e.city_id = ?
+        `;
+        const [events] = await con.promise().query(eventsQuery, [userId, cityId]);
+        console.log("Events in user's city:", events);
+        res.status(200).json(events); // Return the events
+    } catch (error) {
+        console.error('Erreur lors de la récupération des événements par ville :', error);
+        res.status(500).json({ error: 'Erreur serveur' });
     }
 });
 app.get('/api/quartiers/:city_id', async (req, res) => {
@@ -499,7 +571,7 @@ app.get('/cities', async (req, res) => {
 
 app.post('/api/events/participate', (req, res) => {
     const { event_id, user_id } = req.body;
-
+    console.log("Participate : Event ID:", event_id, "User ID:", user_id);
     if (!event_id || !user_id) {
         return res.status(400).json({ error: 'Event ID and User ID are required' });
     }
@@ -533,40 +605,317 @@ app.post('/api/events/participate', (req, res) => {
 });
 app.delete('/api/events/leave', (req, res) => {
     const { event_id, user_id } = req.body;
-
+    console.log('Leaving event:', { event_id, user_id });
     if (!event_id || !user_id) {
         return res.status(400).json({ error: 'Event ID and User ID are required' });
     }
+      // Remove the user from the participants table
+      const deleteParticipationSql = 'DELETE FROM participants WHERE event_id = ? AND user_id = ?';
+        
+      con.query(deleteParticipationSql, [event_id, user_id], (err, result) => {
+          if (err) {
+              console.error('Erreur SQL (delete participation):', err);
+              return res.status(500).json({ error: 'Erreur serveur' });
+          }
 
-    // Check if the user is actually participating
-    const checkParticipationSql = 'SELECT * FROM participants WHERE event_id = ? AND user_id = ?';
-    
-    con.query(checkParticipationSql, [event_id, user_id], (err, results) => {
+          // Respond with a success message
+          res.status(200).json({ message: 'User successfully left the event' });
+      });
+
+ 
+});
+
+// Route pour supprimer un événement
+app.delete('/api/events/:id', (req, res) => {
+    const eventId = req.params.id;
+    console.log('deleting event:', { eventId });
+
+    // Supprimer un événement par son ID
+    const sql = 'DELETE FROM events WHERE id = ?';
+    con.query(sql, [eventId], (err, result) => {
         if (err) {
-            console.error('Erreur SQL (check participation):', err);
+            console.error('Erreur SQL (suppression):', err);
+            return res.status(500).json({ error: 'Erreur lors de la suppression de l\'événement.' });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Événement introuvable.' });
+        }
+
+        res.status(200).json({ message: 'Événement supprimé avec succès.' });
+    });
+});
+
+app.get('/api/events/user/:user_id', (req, res) => {
+    const userId = req.params.user_id;
+
+    // Query to get events where the user is the creator
+    const sqlCreator = 'SELECT * FROM events WHERE creator_id = ?';
+
+    // Query to get events where the user is a participant
+    const sqlParticipant = 'SELECT e.* FROM events e JOIN participants p ON e.id = p.event_id WHERE p.user_id = ?';
+
+    // Get events where the user is the creator
+    con.query(sqlCreator, [userId], (err, creatorEvents) => {
+        if (err) {
+            console.error('Erreur SQL (creator events):', err);
             return res.status(500).json({ error: 'Erreur serveur' });
         }
 
-        if (results.length === 0) {
-            return res.status(404).json({ error: 'User is not participating in this event' });
-        }
-
-        // Remove the user from the participants table
-        const deleteParticipationSql = 'DELETE FROM participants WHERE event_id = ? AND user_id = ?';
-        
-        con.query(deleteParticipationSql, [event_id, user_id], (err, result) => {
+        // Get events where the user is a participant
+        con.query(sqlParticipant, [userId], (err, participantEvents) => {
             if (err) {
-                console.error('Erreur SQL (delete participation):', err);
+                console.error('Erreur SQL (participant events):', err);
                 return res.status(500).json({ error: 'Erreur serveur' });
             }
 
-            // Respond with a success message
-            res.status(200).json({ message: 'User successfully left the event' });
+            // Format the response with two sections: creator events and participant events
+            const response = {
+                creatorEvents: creatorEvents,  // Events where the user is the creator
+                participantEvents: participantEvents  // Events where the user is a participant
+            };
+
+            // If no events are found in either section
+            if (response.creatorEvents.length === 0 && response.participantEvents.length === 0) {
+                return res.status(404).json({ error: 'Aucun événement trouvé pour cet utilisateur' });
+            }
+
+            // Send the formatted response
+            res.status(200).json(response);
         });
     });
 });
 
 //--------------------FIN_EVENTS---------------------
+
+//--------------------PROJECTS-------------------------
+
+
+// Créer un projet
+app.post('/api/projects', (req, res) => {
+    const { title, description, category, author_id, deadline } = req.body;
+
+    if (!title || !description || !category || !author_id || !deadline) {
+        return res.status(400).json({ error: "Tous les champs sont obligatoires." });
+    }
+
+    // Récupérer le quartier de l'auteur
+    con.query("SELECT quartier_id FROM users WHERE id = ?", [author_id], (err, results) => {
+        if (err) return res.status(500).json({ error: "Erreur serveur." });
+        if (results.length === 0) return res.status(404).json({ error: "Utilisateur introuvable." });
+
+        const quartierId = results[0].quartier_id;
+
+        const sql = `
+            INSERT INTO projects (title, description, category, author_id, deadline, quartier_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `;
+
+        con.query(sql, [title, description, category, author_id, deadline, quartierId], (err, result) => {
+            if (err) {
+                console.error("Erreur SQL :", err);
+                return res.status(500).json({ error: "Erreur serveur lors de la création du projet." });
+            }
+            res.status(201).json({ message: "Projet créé avec succès", project_id: result.insertId });
+        });
+    });
+});
+
+
+
+// Supprimer un projet (seulement si l'utilisateur est l'auteur)
+app.delete('/api/projects/:id', (req, res) => {
+    const projectId = req.params.id;
+    const { user_id } = req.body;
+
+    // Vérifier si l'utilisateur est bien l'auteur du projet
+    con.query("SELECT author_id FROM projects WHERE id = ?", [projectId], (err, results) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur serveur." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Projet introuvable." });
+        }
+
+        if (results[0].author_id !== user_id) {
+            return res.status(403).json({ error: "Vous n'êtes pas autorisé à supprimer ce projet." });
+        }
+
+        // Suppression du projet
+        con.query("DELETE FROM projects WHERE id = ?", [projectId], (err) => {
+            if (err) return res.status(500).json({ error: "Erreur lors de la suppression du projet." });
+            return res.status(200).json({ message: "Projet supprimé avec succès." });
+        });
+    });
+});
+
+
+
+// Modifier un projet (seulement si l'utilisateur est l'auteur)
+app.put('/api/projects/:id', (req, res) => {
+
+    const projectId = req.params.id;
+    const { title, description, category, deadline, user_id } = req.body;
+    
+    con.query("SELECT author_id FROM projects WHERE id = ?", [projectId], (err, results) => {
+        if (err) return res.status(500).json({ error: "Erreur serveur." });
+        if (results.length === 0) return res.status(404).json({ error: "Projet introuvable." });
+
+        if (Number(results[0].author_id) !== Number(user_id)) {
+            return res.status(403).json({ error: "Accès interdit. Ce projet ne vous appartient pas." });
+        }
+
+        con.query(
+            "UPDATE projects SET title = ?, description = ?, category = ?, deadline = ? WHERE id = ?",
+            [title, description, category, deadline, projectId],
+            (err) => {
+                if (err) return res.status(500).json({ error: "Erreur lors de la mise à jour." });
+                return res.status(200).json({ message: "Projet mis à jour avec succès." });
+            }
+        );
+    });
+});
+
+
+
+
+// Récupérer les projets (par défaut ceux du quartier de l'utilisateur, sauf si ?all=true)
+app.get('/api/projects', (req, res) => {
+    const { user_id, all } = req.query;
+
+    if (!user_id) {
+        return res.status(400).json({ error: "user_id est requis." });
+    }
+
+    con.query("SELECT quartier_id FROM users WHERE id = ?", [user_id], (err, results) => {
+        if (err) return res.status(500).json({ error: "Erreur serveur." });
+        if (results.length === 0) return res.status(404).json({ error: "Utilisateur introuvable." });
+
+        const quartierId = results[0].quartier_id;
+
+        let sql = `
+            SELECT p.*, u.name AS author_name,
+                (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'up') AS up_votes,
+                (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'down') AS down_votes
+            FROM projects p
+            JOIN users u ON p.author_id = u.id
+        `;
+
+        // Appliquer le filtre par quartier si "all" n'est pas demandé
+        if (!all || all !== "true") {
+            sql += ` WHERE p.quartier_id = ${quartierId}`;
+        }
+
+        sql += ` ORDER BY p.created_at DESC`;
+
+        con.query(sql, (err, results) => {
+            if (err) {
+                console.error("Erreur SQL :", err);
+                return res.status(500).json({ error: "Erreur lors de la récupération des projets." });
+            }
+            res.json(results);
+        });
+    });
+});
+
+
+
+
+// Détails d'un projet par son ID
+app.get('/api/projects/:id', (req, res) => {
+    const projectId = req.params.id;
+
+    const sql = `
+        SELECT p.*, u.name AS author_name,
+               (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'up') AS up_votes,
+               (SELECT COUNT(*) FROM project_votes WHERE project_id = p.id AND vote = 'down') AS down_votes
+        FROM projects p
+        JOIN users u ON p.author_id = u.id
+        WHERE p.id = ?
+    `;
+
+    con.query(sql, [projectId], (err, results) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur lors de la récupération du projet." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Projet introuvable." });
+        }
+
+        res.json(results[0]);
+    });
+});
+
+
+// Voter sur un projet
+app.post('/api/projects/:id/vote', (req, res) => {
+    const { user_id, vote } = req.body;
+    const projectId = req.params.id;
+
+    if (!user_id || !vote || !['up', 'down'].includes(vote)) {
+        console.log("⚠️ Requête invalide :", req.body);
+        return res.status(400).json({ error: "Requête invalide." });
+    }
+
+    // Vérifier que l'utilisateur n'est pas le créateur du projet
+    con.query("SELECT author_id FROM projects WHERE id = ?", [projectId], (err, results) => {
+        if (err) {
+            console.error("Erreur SQL :", err);
+            return res.status(500).json({ error: "Erreur serveur." });
+        }
+
+        if (results.length === 0) {
+            return res.status(404).json({ error: "Projet introuvable." });
+        }
+
+        if (results[0].author_id === user_id) {
+            return res.status(403).json({ error: "Vous ne pouvez pas voter sur votre propre projet." });
+        }
+
+        // Vérifier si l'utilisateur a déjà voté
+        con.query("SELECT * FROM project_votes WHERE user_id = ? AND project_id = ?", [user_id, projectId], (err, voteResults) => {
+            if (err) {
+                console.error("Erreur SQL :", err);
+                return res.status(500).json({ error: "Erreur serveur." });
+            }
+
+            if (voteResults.length > 0) {
+                // Si l'utilisateur a déjà voté, supprimer son vote si c'est le même ou le modifier si c'est différent
+                if (voteResults[0].vote === vote) {
+                    con.query("DELETE FROM project_votes WHERE user_id = ? AND project_id = ?", [user_id, projectId], (err) => {
+                        if (err) return res.status(500).json({ error: "Erreur serveur." });
+                        return res.status(200).json({ message: "Votre vote a été retiré." });
+                    });
+                } else {
+                    con.query("UPDATE project_votes SET vote = ? WHERE user_id = ? AND project_id = ?", [vote, user_id, projectId], (err) => {
+                        if (err) return res.status(500).json({ error: "Erreur serveur." });
+                        return res.status(200).json({ message: "Votre vote a été mis à jour." });
+                    });
+                }
+            } else {
+                // Ajouter un nouveau vote
+                con.query("INSERT INTO project_votes (user_id, project_id, vote) VALUES (?, ?, ?)", [user_id, projectId, vote], (err) => {
+                    if (err) return res.status(500).json({ error: "Erreur serveur." });
+                    return res.status(201).json({ message: "Vote enregistré avec succès." });
+                });
+            }
+        });
+    });
+});
+
+//--------------------FIN_PROJECTS---------------------
+
+
+
+
+
+
+
+
 
 //--------------------PROJECTS-------------------------
 
@@ -1343,8 +1692,8 @@ app.put('/interests/:id', (req, res) => {
 app.get("/interests/received/:id", (req, res) => {
     /*
     C’est ce que fait la route /interests/received/:id.
-	•	Cette route récupère les intérêts pour lesquels l’utilisateur est le proposer_id.
-	•	Exemple : l’utilisateur a posté une annonce pour “Cleaning” → il voit toutes les personnes intéressées.
+    •	Cette route récupère les intérêts pour lesquels l’utilisateur est le proposer_id.
+    •	Exemple : l’utilisateur a posté une annonce pour “Cleaning” → il voit toutes les personnes intéressées.
      */
     const userId = req.params.id; // ID de l'utilisateur (offreur)
 
