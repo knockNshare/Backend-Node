@@ -9,7 +9,7 @@ const socketIo = require("socket.io");
 const Fuse = require('fuse.js');
 const axios = require('axios');
 const querystring = require('querystring');
-
+const { buildTelegramGroupMessage } = require('./services/telegramService');
 
 // Initialiser l'application Express
 const app = express();
@@ -1390,14 +1390,12 @@ app.put('/interests/:id', (req, res) => {
         return res.status(400).json({ error: "Statut invalide." });
     }
 
-    // Mettre à jour le statut
     con.query("UPDATE interests SET status = ? WHERE id = ?", [status, id], (err, result) => {
         if (err) {
             console.error("Erreur SQL lors de la mise à jour de la demande :", err);
             return res.status(500).json({ error: "Erreur serveur" });
         }
 
-        // 🔥 Étape 1 : Récupérer les infos de la demande
         con.query("SELECT interested_user_id, proposition_id FROM interests WHERE id = ?", [id], (err, interestResults) => {
             if (err || interestResults.length === 0) {
                 console.error("Erreur SQL lors de la récupération de la demande :", err);
@@ -1407,14 +1405,14 @@ app.put('/interests/:id', (req, res) => {
             const interested_user_id = interestResults[0].interested_user_id;
             const proposition_id = interestResults[0].proposition_id;
 
-            // 🔥 Étape 2 : Récupérer les infos du proposeur
-            con.query("SELECT proposer_id FROM propositions WHERE id = ?", [proposition_id], (err, proposerResults) => {
+            con.query("SELECT proposer_id, title FROM propositions WHERE id = ?", [proposition_id], (err, proposerResults) => {
                 if (err || proposerResults.length === 0) {
                     console.error("Erreur SQL lors de la récupération du proposeur :", err);
                     return res.status(500).json({ error: "Erreur serveur" });
                 }
 
                 const proposer_id = proposerResults[0].proposer_id;
+                const proposition_title = proposerResults[0].title;
 
                 con.query("SELECT name, email, phone_number FROM users WHERE id = ?", [proposer_id], (err, proposerData) => {
                     if (err || proposerData.length === 0) {
@@ -1426,12 +1424,17 @@ app.put('/interests/:id', (req, res) => {
                     const proposer_email = proposerData[0].email;
                     const proposer_phone = proposerData[0].phone_number;
 
-                    // 🔥 Construire le message en fonction du statut
-                    const message = status === "accepted"
-                        ? `🎉 ${proposer_name} a accepté votre demande pour \"Nettoyage de printemps\". Voici ses contacts : 📧 ${proposer_email} 📞 ${proposer_phone}`
-                        : `❌ ${proposer_name} a refusé votre demande pour \"Nettoyage de printemps\".`;
+                    // 🔗 Créer le lien Telegram uniquement si accepté
+                    let telegramGroupLink = null;
+                    if (status === "accepted") {
+                        const { link } = buildTelegramGroupMessage(proposition_title);
+                        telegramGroupLink = link;
+                    }
 
-                    // 🔥 Étape 3 : Enregistrer la notification avec l'ID
+                    const message = status === "accepted"
+                        ? `🎉 ${proposer_name} a accepté votre demande pour « ${proposition_title} ». Voici ses contacts : 📧 ${proposer_email} 📞 ${proposer_phone}`
+                        : `❌ ${proposer_name} a refusé votre demande pour « ${proposition_title} ».`;
+
                     con.query("INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
                         [interested_user_id, `interest_${status}`, message, proposition_id], (err, notifResult) => {
                             if (err) {
@@ -1441,17 +1444,21 @@ app.put('/interests/:id', (req, res) => {
 
                             const insertedNotifId = notifResult.insertId;
 
-                            // 🔥 Étape 4 : Envoyer la notification en temps réel
                             const io = req.app.get("socketio");
-                            io.emit(`notification-${interested_user_id}`, { 
-                                id: insertedNotifId, 
-                                message, 
+                            io.emit(`notification-${interested_user_id}`, {
+                                id: insertedNotifId,
+                                message,
                                 related_entity_id: proposition_id,
-                                type: `interest_${status}`
+                                type: `interest_${status}`,
+                                telegramGroupLink: telegramGroupLink || null
                             });
 
-                            res.json({ message: `Demande ${status} avec succès.` });
-                    });
+                            res.json({
+                                message: `Demande ${status} avec succès.`,
+                                telegramGroupLink: telegramGroupLink || undefined
+                            });
+                        }
+                    );
                 });
             });
         });
