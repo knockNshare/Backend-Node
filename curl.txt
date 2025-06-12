@@ -1,0 +1,2 @@
+1. Lancer : npx localtunnel --port 3000 
+2 lancer avec le lien resultat de 1  : curl -F "url=https://giant-ravens-cough.loca.lt/webhook" https://api.telegram.org/botv8083122347:AAHIe-j9feSJ0-fCWsD11j_Nm1zr7QVUm50/setWebhook
