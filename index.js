@@ -101,8 +101,8 @@ app.get("/get", (req,res) =>{
 
 // Route pour l'inscription
 app.post('/api/signup', (req, res) => {
-    const { name, email, phone_number, password, city_id,quartier_id } = req.body;
-
+    const { name, email, phone_number, password, city_id, quartier_id, telegram_username } = req.body;
+    
     if (!name || !email || !phone_number || !password || !city_id || !quartier_id)  {
         return res.status(400).json({ error: 'Tous les champs requis doivent être remplis.' });
     }
@@ -120,8 +120,8 @@ app.post('/api/signup', (req, res) => {
         }
 
         // Insérer le nouvel utilisateur (sans hashage)
-        const insertUserQuery = 'INSERT INTO users (name, email, phone_number, password, city_id,quartier_id) VALUES (?, ?, ?, ?, ?,?)';
-        con.query(insertUserQuery, [name, email, phone_number, password, city_id,quartier_id], (err, result) => {
+        const insertUserQuery = 'INSERT INTO users (name, email, phone_number, password, city_id, quartier_id, telegram_username) VALUES (?, ?, ?, ?, ?, ?, ?)';        
+        con.query(insertUserQuery, [name, email, phone_number, password, city_id,quartier_id, telegram_username], (err, result) => {
             if (err) {
                 console.error('Erreur SQL lors de l\'insertion de l\'utilisateur :', err);
                 return res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur' });
@@ -1405,60 +1405,74 @@ app.put('/interests/:id', (req, res) => {
             const interested_user_id = interestResults[0].interested_user_id;
             const proposition_id = interestResults[0].proposition_id;
 
-            con.query("SELECT proposer_id, title FROM propositions WHERE id = ?", [proposition_id], (err, proposerResults) => {
-                if (err || proposerResults.length === 0) {
-                    console.error("Erreur SQL lors de la récupération du proposeur :", err);
+            // 🔹 Nouvelle requête pour récupérer le @telegram_username
+            con.query("SELECT telegram_username FROM users WHERE id = ?", [interested_user_id], (err, tgResults) => {
+                if (err || tgResults.length === 0) {
+                    console.error("Erreur SQL lors de la récupération du pseudo Telegram :", err);
                     return res.status(500).json({ error: "Erreur serveur" });
                 }
 
-                const proposer_id = proposerResults[0].proposer_id;
-                const proposition_title = proposerResults[0].title;
+                const telegram_username = tgResults[0].telegram_username;
 
-                con.query("SELECT name, email, phone_number FROM users WHERE id = ?", [proposer_id], (err, proposerData) => {
-                    if (err || proposerData.length === 0) {
-                        console.error("Erreur SQL lors de la récupération des infos du proposeur :", err);
+                con.query("SELECT proposer_id, title FROM propositions WHERE id = ?", [proposition_id], (err, proposerResults) => {
+                    if (err || proposerResults.length === 0) {
+                        console.error("Erreur SQL lors de la récupération du proposeur :", err);
                         return res.status(500).json({ error: "Erreur serveur" });
                     }
 
-                    const proposer_name = proposerData[0].name;
-                    const proposer_email = proposerData[0].email;
-                    const proposer_phone = proposerData[0].phone_number;
+                    const proposer_id = proposerResults[0].proposer_id;
+                    const proposition_title = proposerResults[0].title;
 
-                    // 🔗 Créer le lien Telegram uniquement si accepté
-                    let telegramGroupLink = null;
-                    if (status === "accepted") {
-                        const { link } = buildTelegramGroupMessage(proposition_title);
-                        telegramGroupLink = link;
-                    }
-
-                    const message = status === "accepted"
-                        ? `🎉 ${proposer_name} a accepté votre demande pour « ${proposition_title} ». Voici ses contacts : 📧 ${proposer_email} 📞 ${proposer_phone}`
-                        : `❌ ${proposer_name} a refusé votre demande pour « ${proposition_title} ».`;
-
-                    con.query("INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
-                        [interested_user_id, `interest_${status}`, message, proposition_id], (err, notifResult) => {
-                            if (err) {
-                                console.error("Erreur SQL lors de l'ajout de la notification :", err);
-                                return res.status(500).json({ error: "Erreur serveur" });
-                            }
-
-                            const insertedNotifId = notifResult.insertId;
-
-                            const io = req.app.get("socketio");
-                            io.emit(`notification-${interested_user_id}`, {
-                                id: insertedNotifId,
-                                message,
-                                related_entity_id: proposition_id,
-                                type: `interest_${status}`,
-                                telegramGroupLink: telegramGroupLink || null
-                            });
-
-                            res.json({
-                                message: `Demande ${status} avec succès.`,
-                                telegramGroupLink: telegramGroupLink || undefined
-                            });
+                    con.query("SELECT name, email, phone_number FROM users WHERE id = ?", [proposer_id], (err, proposerData) => {
+                        if (err || proposerData.length === 0) {
+                            console.error("Erreur SQL lors de la récupération des infos du proposeur :", err);
+                            return res.status(500).json({ error: "Erreur serveur" });
                         }
-                    );
+
+                        const proposer_name = proposerData[0].name;
+                        const proposer_email = proposerData[0].email;
+                        const proposer_phone = proposerData[0].phone_number;
+
+                        // 🔗 Créer le lien Telegram uniquement si accepté
+                        let telegramGroupLink = null;
+                        if (status === "accepted") {
+                            const { link } = buildTelegramGroupMessage(proposition_title);
+                            telegramGroupLink = link;
+                        }
+
+                        const message = status === "accepted"
+                            ? `🎉 ${proposer_name} a accepté votre demande pour « ${proposition_title} ». Voici ses contacts : 📧 ${proposer_email} 📞 ${proposer_phone}`
+                            : `❌ ${proposer_name} a refusé votre demande pour « ${proposition_title} ».`;
+
+                        con.query(
+                            "INSERT INTO notifications (user_id, type, message, related_entity_id) VALUES (?, ?, ?, ?)",
+                            [interested_user_id, `interest_${status}`, message, proposition_id],
+                            (err, notifResult) => {
+                                if (err) {
+                                    console.error("Erreur SQL lors de l'ajout de la notification :", err);
+                                    return res.status(500).json({ error: "Erreur serveur" });
+                                }
+
+                                const insertedNotifId = notifResult.insertId;
+                                const io = req.app.get("socketio");
+
+                                io.emit(`notification-${interested_user_id}`, {
+                                    id: insertedNotifId,
+                                    message,
+                                    related_entity_id: proposition_id,
+                                    type: `interest_${status}`,
+                                    telegramGroupLink: telegramGroupLink || null,
+                                    telegram_username: telegram_username || null,
+                                });
+
+                                res.json({
+                                    message: `Demande ${status} avec succès.`,
+                                    telegramGroupLink: telegramGroupLink || null,
+                                    telegram_username: telegram_username || null,
+                                });
+                            }
+                        );
+                    });
                 });
             });
         });
@@ -1466,41 +1480,44 @@ app.put('/interests/:id', (req, res) => {
 });
 app.get("/interests/received/:id", (req, res) => {
     /*
-    C’est ce que fait la route /interests/received/:id.
+    
     •	Cette route récupère les intérêts pour lesquels l’utilisateur est le proposer_id.
     •	Exemple : l’utilisateur a posté une annonce pour “Cleaning” → il voit toutes les personnes intéressées.
      */
-    const userId = req.params.id; // ID de l'utilisateur (offreur)
-
+    const userId = req.params.id;
+  
     const query = `
-        SELECT i.id, i.proposition_id, i.interested_user_id, i.start_date, i.end_date, i.status, i.created_at, i.updated_at,
-               p.title AS proposition_title, p.description AS proposition_description,
-               u.name AS interested_user_name, u.email AS interested_user_email
-        FROM interests i
-        JOIN propositions p ON i.proposition_id = p.id
-        JOIN users u ON i.interested_user_id = u.id
-        WHERE p.proposer_id = ?
+      SELECT 
+        i.id, i.proposition_id, i.interested_user_id, 
+        i.start_date, i.end_date, i.status, i.created_at, i.updated_at,
+        p.title AS proposition_title, 
+        p.description AS proposition_description,
+        u.name AS interested_user_name, 
+        u.email AS interested_user_email,
+        u.telegram_username 
+      FROM interests i
+      JOIN propositions p ON i.proposition_id = p.id
+      JOIN users u ON i.interested_user_id = u.id
+      WHERE p.proposer_id = ?
     `;
-
+  
     con.query(query, [userId], (err, results) => {
-        if (err) {
-            console.error("Error fetching received interests for user:", err);
-            return res.status(500).json({
-                error: "An error occurred while fetching the interests received by the user."
-            });
-        }
-
-        if (results.length === 0) {
-            return res.json([]); // 🔥 Retourne une liste vide au lieu d'une erreur 404
-        }
-
-        res.json({
-            message: "Here are the interests received by the user",
-            data: results
+      if (err) {
+        console.error("Error fetching received interests for user:", err);
+        
+        return res.status(500).json({
+          error: "An error occurred while fetching the interests received by the user.",
         });
+      }
+    // console.log("✅ Résultats envoyés :");
+    // console.table(results);
+      res.json({
+        message: "Here are the interests received by the user",
+        data: results || [],
+      });
     });
-});
-
+    
+  });
 app.put("/interests/users/:id", (req, res) => {
     const userId = req.params.id;
     const { start_date, end_date, status } = req.body;
@@ -1710,6 +1727,22 @@ app.get("/users", (req, res) => {
     });
 });
 
+app.put('/users/:id/telegram', (req, res) => {
+    const { id } = req.params;
+    const { telegram_username } = req.body;
+  
+    con.query(
+      "UPDATE users SET telegram_username = ? WHERE id = ?",
+      [telegram_username, id],
+      (err, result) => {
+        if (err) {
+          console.error("Erreur SQL :", err);
+          return res.status(500).json({ error: "Erreur serveur" });
+        }
+        res.json({ message: "Pseudo Telegram mis à jour avec succès." });
+      }
+    );
+  });
 //--------------------NOTIFS---------------------
 
 
