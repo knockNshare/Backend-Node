@@ -1023,7 +1023,7 @@ Faciliter les échanges entre le demandeur (intéressé) et le proposeur en offr
 
 === 1.2. Fonctionnement
 	•	Lorsqu’un intérêt est accepté, le proposeur peut désormais contacter l’utilisateur intéressé via Telegram si ce dernier a renseigné son nom d’utilisateur Telegram.
-	•	Le lien de contact est généré dynamiquement (https://t.me/<username>) et affiché dans la vue Mes Intérêts Reçus aux côtés des coordonnées classiques.
+	•	Le lien de contact est généré dynamiquement (avec https : //t.me/<username>) et affiché dans la vue Mes Intérêts Reçus aux côtés des coordonnées classiques.
 	•	Ce lien ouvre automatiquement Telegram (application mobile ou version web) et initie une conversation avec l’utilisateur ciblé.
 	•	Si Telegram est installé sur le smartphone ou l’ordinateur, l’ouverture se fait de manière fluide sans configuration supplémentaire.
 
