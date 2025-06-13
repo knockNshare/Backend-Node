@@ -1004,3 +1004,78 @@ Cette fonctionnalité améliore considérablement l’expérience utilisateur :
 - Visualisation des événements Google
 - Reconnexion et gestion de session
 - Base backend synchronisée
+== Release v1.1 – Gestion automatisée des chatrooms Telegram pour les prêts
+
+Dans cette version, nous avons intégré un **bot Telegram** permettant de créer automatiquement un chatroom dédié à chaque nouveau prêt, et de le supprimer/archiver automatiquement à la fin du prêt.  
+Cette automatisation vise à fluidifier la communication entre les parties et à garder la plateforme propre en évitant l’accumulation de groupes inactifs.
+
+=== Fonctionnalités livrées
+
+- **Création automatique d’un groupe Telegram** à chaque nouveau prêt, via le bot.
+- **Suppression/archivage automatique du chatroom** à la fin du prêt (fonctionnalité développée dans cette release).
+- Lorsqu’un utilisateur marque le prêt comme terminé (en envoyant "/end", "Terminé" ou "Fin du prêt" dans le groupe), le bot :
+  * Envoie un message de confirmation dans le groupe.
+  * Exclut automatiquement l’utilisateur ayant terminé le prêt (sauf s’il est propriétaire du groupe, limitation Telegram).
+  * Archive/supprime le chatroom dans la limite des possibilités de l’API Telegram.
+- **Gestion robuste des erreurs** : si l’utilisateur n’est plus dans le groupe ou ne peut pas être exclu (ex : owner), le bot ignore l’erreur et logue l’événement.
+- **Sécurité** : le bot ne peut exclure que les membres non propriétaires et uniquement si les droits Telegram le permettent.
+
+=== Détail de la fonctionnalité de suppression (développée dans cette release)
+
+- Ajout d’un endpoint webhook `/webhook` qui reçoit les messages Telegram.
+- Détection automatique de la fin d’un prêt via des mots-clés ou commandes spécifiques.
+- Envoi d’un message d’archivage dans le groupe.
+- Exclusion automatique de l’utilisateur ayant marqué le prêt comme terminé.
+- Gestion des cas particuliers :
+  * Si l’utilisateur est déjà exclu : l’erreur est ignorée.
+  * Si l’utilisateur est propriétaire du groupe : l’exclusion échoue (limite Telegram), l’événement est logué.
+- Cette logique garantit que seuls les groupes actifs sont conservés, et que les utilisateurs ne restent pas dans des groupes inutiles.
+
+=== Flux Utilisateur
+
+1. Un utilisateur crée un prêt sur la plateforme.
+2. Un groupe Telegram est automatiquement créé via le bot, et les membres concernés sont ajoutés.
+3. Pendant la durée du prêt, les échanges se font dans ce groupe dédié.
+4. À la fin du prêt, un membre envoie "/end" ou "Terminé" dans le groupe.
+5. Le bot détecte la fin du prêt, envoie un message de confirmation, exclut l’utilisateur concerné, et archive le groupe.
+
+=== Endpoints et intégration technique
+
+- **Webhook `/webhook`** : reçoit les messages Telegram et déclenche la logique d’archivage/suppression.
+- **Utilisation de l’API Telegram** :
+  * `sendMessage` : pour notifier la fin du prêt.
+  * `banChatMember` : pour exclure l’utilisateur.
+- **Gestion des erreurs** : toutes les erreurs sont loguées, et les cas non critiques (utilisateur déjà exclu, etc.) sont ignorés pour garantir la robustesse du service.
+
+=== Limites connues
+
+- Le propriétaire du groupe Telegram ne peut pas être exclu par le bot (limitation Telegram).
+- La suppression totale du groupe n’est pas possible via l’API Telegram, seul le nettoyage des membres et l’envoi d’un message d’archivage sont automatisés.
+
+=== Exemple de séquence
+
+[plantuml, pret-telegram-archivage, svg]
+----
+@startuml
+participant "Utilisateur" as User
+participant "Groupe Telegram" as Chat
+participant "Bot Telegram" as Bot
+
+User -> Chat: Envoie "/end" ou "Terminé"
+Chat -> Bot: Webhook reçu
+Bot -> Chat: Envoie "Prêt terminé. Ce chat sera archivé."
+Bot -> Chat: Exclut l'utilisateur du groupe
+Bot -> Chat: Envoie un message d'archivage
+@enduml
+----
+
+=== Bénéfices
+
+- **Automatisation** : plus besoin de gérer manuellement les groupes Telegram liés aux prêts.
+- **Propreté de la plateforme** : suppression automatique des groupes inactifs.
+- **Expérience utilisateur** : les utilisateurs sont notifiés de la clôture du prêt et exclus du groupe sans intervention manuelle.
+- **Robustesse** : gestion des erreurs et des cas limites pour éviter les blocages.
+
+---
+
+**Cette release marque une étape clé dans l’intégration de la messagerie instantanée à la gestion des prêts, tout en assurant un nettoyage automatique des groupes à la fin de chaque transaction.**

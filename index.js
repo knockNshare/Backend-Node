@@ -10,6 +10,8 @@ const Fuse = require('fuse.js');
 const axios = require('axios');
 const querystring = require('querystring');
 const { buildTelegramGroupMessage } = require('./services/telegramService');
+const webhookRouter = require('./webhookHandler'); // adjust the path if needed
+
 
 // Initialiser l'application Express
 const app = express();
@@ -70,6 +72,8 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(bodyParser.json()); // Parse JSON request bodies
+app.use('/webhook', webhookRouter);
+
 
 // Configuration et connexion MySQL avec les variables d'environnement
 var con = mysql.createConnection({
@@ -1968,6 +1972,7 @@ app.put('/signalements/:id/resoudre', (req, res) => {
 
 
 
+     //--------------------Webhook---------------------
 
 
 // Démarrer le serveur
