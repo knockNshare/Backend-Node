@@ -9,7 +9,8 @@ const socketIo = require("socket.io");
 const Fuse = require('fuse.js');
 const axios = require('axios');
 const querystring = require('querystring');
-const webhookRouter = require('./webhookHandler'); // adjust the path if needed
+// const webhookRouter = require('./webhookHandler');
+const { sendMessage } = require('./utils/telegramApi');
 
 
 // Initialiser l'application Express
@@ -69,9 +70,7 @@ const PORT = process.env.PORT || 3000;
 
 
 
-// Middleware
-app.use(bodyParser.json()); // Parse JSON request bodies
-app.use('/webhook', webhookRouter);
+
 
 
 // Configuration et connexion MySQL avec les variables d'environnement
@@ -87,6 +86,13 @@ con.connect(function(err) {
     if (err) throw err;
     console.log("Connected to the database!");
 });
+
+// On importe la factory et on lui passe "con"
+const webhookRouter = require('./webhookHandler')(con);
+app.use('/webhook', webhookRouter);
+
+
+
 
 //-----------API Endpoints pour le TEST-----------
 app.get('/', (req, res) => {
@@ -1453,6 +1459,29 @@ app.put('/interests/:id', (req, res) => {
                                 type: `interest_${status}`
                             });
 
+                            // 🔔 Étape 5 : envoyer automatiquement le message de début de prêt
+                            if (status === "accepted") {
+                                con.query(
+                                    "SELECT chat_id FROM interests WHERE id = ?",
+                                    [id],
+                                    (err, rows) => {
+                                        if (err) {
+                                            console.error("❌ Impossible de récupérer chat_id :", err);
+                                            return;
+                                        }
+                                        const chatId = rows[0]?.chat_id;
+                                        if (!chatId) {
+                                            console.warn("⚠️ Pas de chat_id trouvé pour interest", id);
+                                            return;
+                                        }
+                                        // envoi du message déclencheur
+                                        sendMessage(chatId, `👋 Début du prêt #id=${id}`)
+                                            .then(() => console.log("📩 Message de début de prêt envoyé"))
+                                            .catch(e => console.error("❌ Échec envoi début de prêt :", e.message));
+                                    }
+                                );
+                            }
+
                             res.json({ message: `Demande ${status} avec succès.` });
                     });
                 });
@@ -1460,6 +1489,7 @@ app.put('/interests/:id', (req, res) => {
         });
     });
 });
+
 app.get("/interests/received/:id", (req, res) => {
     /*
     C’est ce que fait la route /interests/received/:id.
